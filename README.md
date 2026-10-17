@@ -14,6 +14,10 @@ quando terminar (o codespace para sozinho depois de 30 minutos parado).
 
 **No computador (Windows):** depois de clonar ou baixar o repositório, dê dois cliques em `abrir_painel.bat`.
 
+**Tema claro ou escuro:** escolha em **🎨 Tema**, no topo da barra lateral. Vale para o painel e os gráficos.
+
+**Logo da B3:** coloque o arquivo oficial em `data/logo_b3.svg` (ou `.png`) e ele aparece na Visão geral.
+
 Painel em **Streamlit** que analisa a **B3 S.A. – Brasil, Bolsa, Balcão** (B3SA3) a partir de dados oficiais.
 Projeto Integrador III · Tecnologia em Ciência de Dados.
 
