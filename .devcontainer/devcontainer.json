@@ -10,7 +10,7 @@
     }
   },
   "updateContentCommand": "python -m pip install --upgrade pip && python -m pip install -r requirements.txt",
-  "postAttachCommand": "python -m streamlit run app.py --server.enableCORS false --server.enableXsrfProtection false --server.headless true",
+  "postAttachCommand": "python -m streamlit run app.py --server.headless true --server.enableCORS false --server.enableXsrfProtection false",
   "portsAttributes": {
     "8501": {
       "label": "Painel B3",
