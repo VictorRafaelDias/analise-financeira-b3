@@ -53,37 +53,50 @@ def formatar_valor(v):
 
 
 def construir_sankey(valores, periodos, titulo):
-    """Sankey original do Enzo (posições, cores, rótulos e altura dele), para os períodos pedidos.
+    """Sankey do Enzo (cores, rótulos em R$ mil e estrutura dele), para os períodos pedidos.
 
     Vários períodos: Receita total do intervalo → cada período → os 7 componentes de cada período.
     Um período só: Receita total do período → os 7 componentes (sem repetir a coluna do meio).
+    As colunas usam a largura toda e cada componente fica na altura proporcional ao valor, para não se
+    amontoar. Vários anos: rótulo só no maior componente de cada ano; um período: em todos com 3% ou mais.
+    Os valores de todos os componentes ficam no balão do mouse.
     valores: DataFrame período x chaves da DRE (R$ mil).
     """
-    labels, cores_no, x_no, y_no = [], [], [], []
+    labels, dados, cores_no, x_no, y_no = [], [], [], [], []
     source, target, value, link_color = [], [], [], []
     n = len(periodos)
     total = valores.loc[periodos, "receita_total"]
+    x_raiz, x_periodo, x_seg = (0.001, 0.36, 0.999) if n > 1 else (0.001, None, 0.999)
+    minimo = 0.30 if n > 1 else 0.03  # rótulo visível: só o maior componente na visão de vários anos
 
     idx_raiz = 0
     rotulo_raiz = f"{periodos[0]}-{periodos[-1]}" if n > 1 else str(periodos[0])
     labels.append(f"Receita Total {rotulo_raiz}<br>{formatar_valor(float(total.sum()))}")
-    cores_no.append(COR_RAIZ); x_no.append(0.32); y_no.append(0.5)
+    dados.append(f"Receita Total {rotulo_raiz}: {formatar_valor(float(total.sum()))}")
+    cores_no.append(COR_RAIZ); x_no.append(x_raiz); y_no.append(0.5)
 
+    faixa = 1 / n
     idx_periodo = {}
     if n > 1:
         for i, p in enumerate(periodos):
             idx_periodo[p] = len(labels)
             labels.append(f"{p}<br>{formatar_valor(float(total[p]))}")
-            cores_no.append(COR_ANO); x_no.append(0.49); y_no.append((i + 0.5) / n)
+            dados.append(f"Receita Total {p}: {formatar_valor(float(total[p]))}")
+            cores_no.append(COR_ANO); x_no.append(x_periodo); y_no.append((i + 0.5) * faixa)
     else:
         idx_periodo[periodos[0]] = idx_raiz
 
     for i, p in enumerate(periodos):
-        segs = [(k, nome) for k, nome in dre.SEGMENTOS if float(valores.loc[p, k]) != 0]
-        for j, (k, nome) in enumerate(segs):
+        segs = [(k, nome) for k, nome in dre.SEGMENTOS if float(valores.loc[p, k]) > 0]
+        soma = sum(float(valores.loc[p, k]) for k, _ in segs)
+        acum = 0.0
+        for k, nome in segs:
             v = float(valores.loc[p, k])
-            labels.append(formatar_valor(v))
-            cores_no.append(CORES_SEGMENTOS[nome]); x_no.append(0.69); y_no.append((i + (j + 0.5) / len(segs)) / n)
+            centro = i * faixa + faixa * (0.05 + 0.9 * (acum + v / 2) / soma)  # posição proporcional ao valor
+            acum += v
+            labels.append(formatar_valor(v) if v / soma >= minimo else "")
+            dados.append(f"{nome} · {p}: {formatar_valor(v)} ({br(v / soma * 100, 1)}%)")
+            cores_no.append(CORES_SEGMENTOS[nome]); x_no.append(x_seg); y_no.append(centro)
             source.append(idx_periodo[p]); target.append(len(labels) - 1); value.append(v)
             h = CORES_SEGMENTOS[nome].lstrip("#")
             link_color.append(f"rgba({int(h[0:2], 16)},{int(h[2:4], 16)},{int(h[4:6], 16)},0.4)")
@@ -93,13 +106,14 @@ def construir_sankey(valores, periodos, titulo):
 
     fig = go.Figure(go.Sankey(
         arrangement="perpendicular",
-        node=dict(pad=10, thickness=14, line=dict(color="black", width=0.4), label=labels, color=cores_no,
-                  x=x_no, y=y_no, hovertemplate="%{label}<br>R$ %{value:,.0f} mil<extra></extra>"),
+        textfont=dict(size=12),
+        node=dict(pad=6, thickness=16, line=dict(color="black", width=0.4), label=labels, color=cores_no,
+                  x=x_no, y=y_no, customdata=dados, hovertemplate="%{customdata}<extra></extra>"),
         link=dict(source=source, target=target, value=value, color=link_color,
-                  hovertemplate="%{source.label} -> %{target.label}<br>R$ %{value:,.0f} mil<extra></extra>"),
+                  hovertemplate="%{source.customdata} → %{target.customdata}<extra></extra>"),
     ))
     fig.update_layout(title=dict(text=titulo, y=1, yref="container", yanchor="top", pad=dict(t=34)),
-                      margin=dict(l=10, r=10, t=80, b=10), font=dict(size=13), height=850 if n > 1 else 560,
+                      margin=dict(l=10, r=10, t=80, b=10), font=dict(size=13), height=640 if n > 1 else 460,
                       separators=",.")
     return fig
 
@@ -196,15 +210,15 @@ def render(janela):
         fig_sk = construir_sankey(a.rename(index=str), [ano_sk], f"B3 - Composição da Receita Total ({ano_sk})")
     elif ver == "Trimestre":
         trimestres = list(t.index)
-        tri_sk = (st.select_slider("Trimestre", trimestres, value=trimestres[-1], key="enz_sk_tri")
-                  if len(trimestres) > 1 else trimestres[0])
+        tri_sk = c.bloco_trimestre("Trimestre", trimestres, trimestres[-1], key="enz_sk_tri")
         fig_sk = construir_sankey(t, [tri_sk], f"B3 - Composição da Receita Total ({tri_sk})")
     else:
         fig_sk = construir_sankey(a.rename(index=str), [str(x) for x in anos],
                                   f"B3 - Composição da Receita Total ({ini}-{fim})")
     c.mostrar_grafico(fig_sk, key="enz_sankey")
-    st.caption("Sankey original do Enzo. Cada cor é um componente da receita (legenda acima); passe o mouse para ver "
-               "de onde vem e para onde vai cada valor.")
+    st.caption("Sankey do Enzo. Cada cor é um componente da receita (legenda acima). Em \"Todos os anos\" só o maior "
+               "componente (Mercados) tem rótulo; escolha um ano ou trimestre para ver todos os valores, ou passe o "
+               "mouse sobre as faixas.")
 
     st.markdown("**Crescimento de cada segmento na janela (cor = oportunidade)**")
     seg = pd.DataFrame([(nome, a.loc[ini, k], a.loc[fim, k]) for k, nome in dre.SEGMENTOS

@@ -57,6 +57,8 @@ Todos ficam em [`utils/comum.py`](utils/comum.py). Use as funções em vez de re
 | Glossário | João | `glossario(aba)` |
 | Painel de alertas | João e Victor | `painel_alertas()` |
 | Janela de período igual | Enzo | objeto `Janela` (barra lateral do `app.py`) |
+| Escolha de anos e trimestres em bloquinhos | grupo | `blocos()`, `bloco_trimestre()` |
+| Valor em todos os pontos dos gráficos de linha | grupo | automático em `mostrar_grafico()` |
 | Indicadores-chave | Camila | `kpis()` |
 | Bloco de diagnóstico e fonte | Victor | `diagnostico()`, `fonte()` |
 | Oportunidades para a Conclusão | grupo | `oportunidade()`, `bloco_oportunidades()` |

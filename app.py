@@ -18,11 +18,14 @@ with st.sidebar:
     c.seletor_tema()
     st.divider()
     st.header("📅 Janela de análise")
-    ano_ini, ano_fim = st.select_slider(
-        "Período (vale para todas as abas)", options=list(range(2020, 2027)), value=(2020, 2026),
-        format_func=lambda a: f"{a} (1S)" if a > c.ULTIMO_ANO_FECHADO else str(a), key="janela",
-        help="Mesma janela em todas as abas. Análises anuais usam anos fechados (até 2025); 2026 entra até o 2T26 "
-             "nos gráficos trimestrais e LTM.")
+    anos_opcoes = list(range(2020, 2027))
+    rotulo_ano = lambda a: f"{a}*" if a > c.ULTIMO_ANO_FECHADO else str(a)
+    ajuda = ("Mesma janela em todas as abas. Análises anuais usam anos fechados (até 2025); 2026* é parcial e entra "
+             "até o 2T26 nos gráficos trimestrais e LTM.")
+    ano_ini = c.blocos("De", anos_opcoes, 2020, "janela_de", formato=rotulo_ano, ajuda=ajuda)
+    ano_fim = c.blocos("Até", anos_opcoes, 2026, "janela_ate", formato=rotulo_ano)
+    if ano_ini > ano_fim:
+        ano_ini, ano_fim = ano_fim, ano_ini
     janela = c.Janela(ano_ini, ano_fim)
     st.caption(f"Anos fechados na janela: {janela.anos_fechados[0] if janela.anos_fechados else '—'}–{janela.ano_ref}"
                + (" · 2026 parcial (1T26–2T26)" if janela.inclui_parcial else ""))

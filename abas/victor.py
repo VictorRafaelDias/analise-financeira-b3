@@ -26,18 +26,21 @@ def visao(key):
 
 
 def botoes(rotulo, opcoes, padrao, key):
-    """Escolha por botões (como no Sankey do Enzo): botões lado a lado; listas longas viram pílulas que quebram linha."""
+    """Escolha em bloquinhos (padrão do painel): anos direto; trimestres em ano + trimestre."""
     opcoes = list(opcoes)
-    if len(opcoes) <= 8:
-        escolha = st.segmented_control(rotulo, opcoes, default=padrao, key=key)
-    else:
-        escolha = st.pills(rotulo, opcoes, default=padrao, key=key)
-    return escolha or padrao
+    if opcoes and all(len(o) == 4 and o[1] == "T" for o in opcoes):
+        return cm.bloco_trimestre(rotulo, opcoes, padrao, key)
+    return cm.blocos(rotulo, opcoes, padrao, key)
 
 
 def intervalo(rotulo, opcoes, de, ate, key):
-    """Par De/Até num controle deslizante de dois pontos."""
-    return st.select_slider(rotulo, list(opcoes), value=(de, ate), key=key)
+    """Par De/Até de trimestres, cada um em bloquinhos de ano + trimestre."""
+    g_de, g_ate = st.columns(2)
+    with g_de:
+        q0 = cm.bloco_trimestre("De", opcoes, de, f"{key}_de")
+    with g_ate:
+        q1 = cm.bloco_trimestre("Até", opcoes, ate, f"{key}_ate")
+    return q0, q1
 
 
 def cabecalho(n, nome, tese, abertura):
