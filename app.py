@@ -15,6 +15,8 @@ c.aplicar_css()
 # Janela de período (igual para todas as abas)
 # ======================================================================================
 with st.sidebar:
+    c.seletor_tema()
+    st.divider()
     st.header("📅 Janela de análise")
     ano_ini, ano_fim = st.select_slider(
         "Período (vale para todas as abas)", options=list(range(2020, 2027)), value=(2020, 2026),

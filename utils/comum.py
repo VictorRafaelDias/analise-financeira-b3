@@ -355,12 +355,20 @@ CONFIG_GRAFICO = {
 
 
 def layout_base(fig, titulo=None, altura=430, y_titulo=None, legenda=True):
+    """Título no topo e legenda logo abaixo dele, com margem que cresce com a legenda (nada se sobrepõe)."""
+    itens = [t for t in fig.data if t.type not in ("waterfall", "sankey", "treemap", "pie")
+             and getattr(t, "showlegend", None) is not False]
+    linhas = 0 if not legenda or not itens else (1 if len(itens) <= 2 else 2 if len(itens) <= 4 else 3)
+    # a barra de ferramentas do Plotly ocupa ~30 px no topo: título e legenda começam abaixo dela
+    topo = (72 if titulo else 34) + 26 * linhas + 10
     fig.update_layout(
-        title=dict(text=f"<b>{titulo}</b>", x=0, font=dict(size=15)) if titulo else None,
+        title=dict(text=f"<b>{titulo}</b>", x=0, xanchor="left", y=1, yref="container", yanchor="top",
+                   pad=dict(t=34), font=dict(size=15)) if titulo else None,
         separators=",.",
-        height=altura,
-        margin=dict(l=10, r=10, t=70 if titulo else 40, b=10),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
+        height=altura + topo - 40,
+        margin=dict(l=10, r=10, t=topo, b=10),
+        legend=dict(orientation="h", yanchor="bottom", y=1.0, xanchor="left", x=0, font=dict(size=12),
+                    bgcolor="rgba(0,0,0,0)"),
         showlegend=legenda,
         font=dict(size=13),
         hoverlabel=dict(align="left"),
@@ -415,6 +423,7 @@ def cascata(passos, titulo=None, altura=480, y_titulo="R$ bilhões", dec=2, esca
 def mostrar_grafico(fig, key=None, **kw):
     """Padrão de exibição: largura total, botão de tela cheia do Streamlit e barra de escala do Plotly."""
     fig.update_layout(separators=",.")
+    ajustar_tema(fig)
     return st.plotly_chart(fig, width="stretch", config=CONFIG_GRAFICO, key=key, **kw)
 
 
@@ -539,35 +548,102 @@ def bloco_oportunidades(janela, aba, titulo="💡 Diagnóstico de oportunidades 
 # ======================================================================================
 # CSS global
 # ======================================================================================
-CSS = """
+# ======================================================================================
+# Tema claro / escuro (escolhido na barra lateral; vale para cards e gráficos)
+# ======================================================================================
+TEMAS = {
+    "light": dict(fundo_card="#FFFFFF", borda="#E1E8F0", titulo="#142B4A", sombra="rgba(20,43,74,0.05)"),
+    "dark": dict(fundo_card="#16213A", borda="#2A3A55", titulo="#E6EDF5", sombra="rgba(0,0,0,0.35)"),
+}
+# Cores escuras usadas em textos e linhas dos gráficos -> versão clara no tema escuro
+CLAREAR = {"#4B5563": "#CBD5E1", "#4b5563": "#CBD5E1", "#111111": "#E5E7EB", "#333": "#E5E7EB", "#333333": "#E5E7EB",
+           "#1F5FAD": "#7FB2F0", "#1f5fad": "#7FB2F0", "#9A6B00": "#F2C14E", "#B03A1E": "#FF8A65",
+           "#142B4A": "#E6EDF5", "#4d4d4d": "#9CA3AF"}
+
+
+def tema_atual():
+    """'light' ou 'dark': a escolha da barra lateral (?tema=) manda; senão, o tema detectado pelo navegador."""
+    escolha = st.query_params.get("tema")
+    if escolha in ("claro", "escuro"):
+        return "dark" if escolha == "escuro" else "light"
+    try:
+        return "dark" if st.context.theme.type == "dark" else "light"
+    except Exception:
+        return "light"
+
+
+def seletor_tema():
+    """Rádio Claro/Escuro na barra lateral. Ao trocar, grava o tema do Streamlit no navegador e recarrega."""
+
+    atual = tema_atual()
+    escolha = st.radio("🎨 Tema", ["☀️ Claro", "🌙 Escuro"], index=1 if atual == "dark" else 0, horizontal=True,
+                       key="tema_sel", help="Muda as cores de todo o painel e dos gráficos.")
+    nova = "dark" if "Escuro" in escolha else "light"
+    if nova != atual:
+        valor, param = ("Dark", "escuro") if nova == "dark" else ("Light", "claro")
+        # Script fixo (sem entrada do usuário): grava o tema do Streamlit no navegador e recarrega com ?tema=.
+        st.html(
+            "<script>"
+            f"localStorage.setItem('stActiveTheme-'+location.pathname+'-v2', JSON.stringify('{valor}'));"
+            f"const u=new URL(location.href);u.searchParams.set('tema','{param}');location.replace(u.toString());"
+            "</script>", unsafe_allow_javascript=True)
+
+
+def _clarear(cor):
+    return CLAREAR.get(cor, cor) if isinstance(cor, str) else cor
+
+
+def ajustar_tema(fig):
+    """No tema escuro, troca textos e linhas escuros por versões claras e o fundo das caixas de rótulo."""
+    if tema_atual() != "dark":
+        return fig
+    for a in fig.layout.annotations or []:
+        if a.font and a.font.color:
+            a.font.color = _clarear(a.font.color)
+        if a.bgcolor and str(a.bgcolor).startswith("rgba(255,255,255"):
+            a.bgcolor = "rgba(22,33,58,0.92)"
+            a.font.color = "#E6EDF5"
+    for t in fig.data:
+        tf = getattr(t, "textfont", None)
+        if tf is not None and isinstance(tf.color, str):
+            tf.color = _clarear(tf.color)
+        ln = getattr(t, "line", None)
+        if ln is not None and isinstance(getattr(ln, "color", None), str):
+            ln.color = _clarear(ln.color)
+    return fig
+
+
+def css():
+    c = TEMAS[tema_atual()]
+    return f"""
 <style>
-.block-container {padding-top: 2rem; max-width: 1500px;}
-h1, h2, h3 {color: #142B4A;}
+.block-container {{padding-top: 2rem; max-width: 1500px;}}
+h1, h2, h3 {{color: {c['titulo']};}}
 /* Indicadores-chave (padrão da Camila) */
-div[data-testid="stMetric"] {background: #FFFFFF; border: 1px solid #E1E8F0; padding: 14px 16px;
-    border-radius: 12px; box-shadow: 0 2px 8px rgba(20,43,74,0.05);}
-div[data-testid="stExpander"] {background: #FFFFFF; border-radius: 10px;}
-div[data-testid="stAlert"] {border-radius: 10px;}
+div[data-testid="stMetric"] {{background: {c['fundo_card']}; border: 1px solid {c['borda']}; padding: 14px 16px;
+    border-radius: 12px; box-shadow: 0 2px 8px {c['sombra']};}}
+div[data-testid="stExpander"] {{background: {c['fundo_card']}; border-radius: 10px;}}
+div[data-testid="stAlert"] {{border-radius: 10px;}}
 /* Painel de alertas (padrão do Victor/João) */
-.radar-card {border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; min-height: 178px;
-    background: #FFFFFF; border: 1px solid #E1E8F0; box-shadow: 0 2px 8px rgba(20,43,74,0.05); cursor: help;}
-.rc-top {display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}
-.rc-nome {font-weight:600; font-size:0.9rem; line-height:1.25;}
-.rc-badge {font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;}
-.rc-valor {font-size:1.6rem; font-weight:700; margin-top:6px;}
-.rc-delta {font-size:0.8rem; opacity:0.75;}
-.rc-desc {font-size:0.8rem; margin-top:6px; line-height:1.3;}
-.rc-fonte {font-size:0.72rem; margin-top:6px; opacity:0.6;}
-.tese {font-size:1.1rem; font-style:italic; margin-top:-0.4rem; opacity:0.85;}
-.leitura {font-size:0.95rem; margin:-4px 0 10px 0;}
-.oport {background:#FFFFFF; border:1px solid #E1E8F0; border-radius:8px; padding:8px 12px; margin-bottom:8px;
-    font-size:0.92rem;}
+.radar-card {{border-radius: 10px; padding: 12px 14px; margin-bottom: 12px; min-height: 178px;
+    background: {c['fundo_card']}; border: 1px solid {c['borda']}; box-shadow: 0 2px 8px {c['sombra']}; cursor: help;}}
+.rc-top {{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}}
+.rc-nome {{font-weight:600; font-size:0.9rem; line-height:1.25;}}
+.rc-badge {{font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;}}
+.rc-valor {{font-size:1.6rem; font-weight:700; margin-top:6px;}}
+.rc-delta {{font-size:0.8rem; opacity:0.75;}}
+.rc-desc {{font-size:0.8rem; margin-top:6px; line-height:1.3;}}
+.rc-fonte {{font-size:0.72rem; margin-top:6px; opacity:0.6;}}
+.tese {{font-size:1.1rem; font-style:italic; margin-top:-0.4rem; opacity:0.85;}}
+.leitura {{font-size:0.95rem; margin:-4px 0 10px 0;}}
+.oport {{background:{c['fundo_card']}; border:1px solid {c['borda']}; border-radius:8px; padding:8px 12px;
+    margin-bottom:8px; font-size:0.92rem;}}
 </style>
 """
 
 
 def aplicar_css():
-    st.markdown(CSS, unsafe_allow_html=True)
+    st.markdown(css(), unsafe_allow_html=True)
 
 
 def cabecalho_secao(titulo, tese=None, abertura=None):

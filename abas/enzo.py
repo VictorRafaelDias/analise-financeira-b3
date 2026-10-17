@@ -44,48 +44,98 @@ def _participacao(t):
     return v, v.div(total, axis=0)
 
 
-def _sankey(a):
-    anos = list(a.index)
-    labels, cores, xs, ys, nomes = [], [], [], [], []
-    total_geral = a["receita_total"].sum()
-    labels.append(f"Receita total {anos[0]}–{anos[-1]}<br>R$ {br(total_geral / 1e6, 2)} bi")
-    cores.append("#4d4d4d"); xs.append(0.05); ys.append(0.5); nomes.append("Receita total do período")
-    idx_ano = {}
-    for i, ano in enumerate(anos):
-        idx_ano[ano] = len(labels)
-        labels.append(f"{ano}<br>R$ {br(a.loc[ano, 'receita_total'] / 1e6, 2)} bi")
-        cores.append("#17becf"); xs.append(0.4); ys.append((i + 0.5) / len(anos)); nomes.append(f"Receita total {ano}")
-    idx_seg = {}
-    for i, ano in enumerate(anos):
-        segs = [(k, n) for k, n in dre.SEGMENTOS if a.loc[ano, k] != 0]
-        for j, (k, n) in enumerate(segs):
-            idx_seg[(ano, k)] = len(labels)
-            labels.append(f"R$ {br(a.loc[ano, k] / 1e6, 2)} bi")
-            cores.append(CORES_SEGMENTOS[n]); xs.append(0.75); ys.append((i + (j + 0.5) / len(segs)) / len(anos))
-            nomes.append(f"<b>{n} · {ano}</b>" + c.dica(n))
-    src, tgt, val, lcor, lhover = [], [], [], [], []
-    for ano in anos:
-        src.append(0); tgt.append(idx_ano[ano]); val.append(a.loc[ano, "receita_total"] / 1e6)
-        lcor.append("rgba(150,150,150,0.35)"); lhover.append(f"Receita total {ano}" + c.dica("Receita bruta"))
-    for ano in anos:
-        for k, n in dre.SEGMENTOS:
-            if a.loc[ano, k] == 0:
-                continue
-            src.append(idx_ano[ano]); tgt.append(idx_seg[(ano, k)]); val.append(a.loc[ano, k] / 1e6)
-            h = CORES_SEGMENTOS[n].lstrip("#")
-            lcor.append(f"rgba({int(h[0:2], 16)},{int(h[2:4], 16)},{int(h[4:6], 16)},0.4)")
-            lhover.append(f"<b>{n} · {ano}</b><br>{pct(a.loc[ano, k] / a.loc[ano, 'receita_total'], 1)} da receita"
-                          + c.dica(n))
+MERCADOS_ABERTURA = [("derivativos", "Derivativos", "#4c78a8"), ("renda_variavel", "Renda Variável", "#54a24b"),
+                     ("rf_credito", "Renda Fixa e Crédito", "#f58518"), ("emprestimo_ativos", "Empréstimo de Ativos", "#9e9e9e")]
+
+
+def _rgba(cor, alfa=0.35):
+    h = cor.lstrip("#")
+    return f"rgba({int(h[0:2], 16)},{int(h[2:4], 16)},{int(h[4:6], 16)},{alfa})"
+
+
+def _sankey_figura(labels, cores, nomes, src, tgt, val, lcor, lhover, titulo, altura):
     fig = go.Figure(go.Sankey(
-        arrangement="perpendicular",
-        node=dict(pad=8, thickness=14, line=dict(color="black", width=0.4), label=labels, color=cores, x=xs, y=ys,
-                  customdata=nomes, hovertemplate="%{customdata}<br>%{label}<extra></extra>"),
+        arrangement="snap",
+        textfont=dict(size=13),
+        node=dict(pad=22, thickness=22, line=dict(color="rgba(0,0,0,0.3)", width=0.5), label=labels, color=cores,
+                  customdata=nomes, hovertemplate="%{customdata}<extra></extra>"),
         link=dict(source=src, target=tgt, value=val, color=lcor, customdata=lhover,
-                  hovertemplate="%{customdata}<br>R$ %{value:,.2f} bi<extra></extra>"),
+                  hovertemplate="%{customdata}<extra></extra>"),
     ))
-    c.layout_base(fig, f"Composição da receita total ({anos[0]}–{anos[-1]})", altura=max(560, 150 * len(anos)),
-                  legenda=False)
+    c.layout_base(fig, titulo, altura=altura, legenda=False)
+    fig.update_layout(margin=dict(l=10, r=10, t=60, b=10))
     return fig
+
+
+def _sankey_ano(a, ano):
+    """Um ano: receita total → 7 componentes → abertura de Mercados. Rótulos com nome, valor e % da receita."""
+    r = a.loc[ano]
+    total = r["receita_total"]
+
+    def rot(nome, v):
+        # rótulo visível só para fatias de pelo menos 2% (as menores ficam no balão do mouse)
+        return f"{nome}<br>R$ {br(v / 1e6, 2)} bi · {pct(v / total, 1)}" if v / total >= 0.02 else ""
+
+    labels = [f"Receita total {ano}<br>R$ {br(total / 1e6, 2)} bi"]
+    cores = ["#4d4d4d"]
+    nomes = [f"<b>Receita total {ano}</b><br>R$ {br(total / 1e6, 2)} bi" + c.dica("Receita bruta")]
+    idx = {}
+    for k, n in dre.SEGMENTOS:
+        if r[k] <= 0:
+            continue
+        idx[k] = len(labels)
+        labels.append(rot(n, r[k]))
+        cores.append(CORES_SEGMENTOS[n])
+        nomes.append(f"<b>{n}</b><br>R$ {br(r[k] / 1e6, 2)} bi · {pct(r[k] / total, 1)} da receita" + c.dica(n))
+    src, tgt, val, lcor, lhover = [], [], [], [], []
+    for k, n in dre.SEGMENTOS:
+        if k in idx:
+            src.append(0); tgt.append(idx[k]); val.append(r[k] / 1e6)
+            lcor.append(_rgba(CORES_SEGMENTOS[n]))
+            lhover.append(f"<b>{n}</b><br>R$ {br(r[k] / 1e6, 2)} bi · {pct(r[k] / total, 1)} da receita")
+    for k, n, cor in MERCADOS_ABERTURA:
+        if r[k] <= 0:
+            continue
+        labels.append(rot(n, r[k]))
+        cores.append(cor)
+        nomes.append(f"<b>{n}</b> (dentro de Mercados)<br>R$ {br(r[k] / 1e6, 2)} bi · {pct(r[k] / total, 1)} da receita"
+                     + c.dica(n))
+        src.append(idx["mercados"]); tgt.append(len(labels) - 1); val.append(r[k] / 1e6)
+        lcor.append(_rgba(cor)); lhover.append(f"<b>Mercados → {n}</b><br>R$ {br(r[k] / 1e6, 2)} bi")
+    return _sankey_figura(labels, cores, nomes, src, tgt, val, lcor, lhover,
+                          f"De onde vem a receita da B3 em {ano}", 560)
+
+
+def _sankey_anos(a):
+    """Todos os anos: cada ano → os 7 componentes somados no período."""
+    anos = list(a.index)
+    labels, cores, nomes = [], [], []
+    for ano in anos:
+        labels.append(f"{ano} · R$ {br(a.loc[ano, 'receita_total'] / 1e6, 2)} bi")
+        cores.append("#17becf")
+        nomes.append(f"<b>Receita total {ano}</b>" + c.dica("Receita bruta"))
+    soma = a[[k for k, _ in dre.SEGMENTOS]].sum()
+    total = soma.sum()
+    idx = {}
+    for k, n in dre.SEGMENTOS:
+        if soma[k] <= 0:
+            continue
+        idx[k] = len(labels)
+        labels.append(f"{n}<br>R$ {br(soma[k] / 1e6, 1)} bi · {pct(soma[k] / total, 1)}" if soma[k] / total >= 0.02 else "")
+        cores.append(CORES_SEGMENTOS[n])
+        nomes.append(f"<b>{n}</b> ({anos[0]}–{anos[-1]})<br>R$ {br(soma[k] / 1e6, 2)} bi · {pct(soma[k] / total, 1)}"
+                     + c.dica(n))
+    src, tgt, val, lcor, lhover = [], [], [], [], []
+    for i, ano in enumerate(anos):
+        for k, n in dre.SEGMENTOS:
+            v = a.loc[ano, k]
+            if k in idx and v > 0:
+                src.append(i); tgt.append(idx[k]); val.append(v / 1e6)
+                lcor.append(_rgba(CORES_SEGMENTOS[n], 0.3))
+                lhover.append(f"<b>{n} · {ano}</b><br>R$ {br(v / 1e6, 2)} bi · "
+                              f"{pct(v / a.loc[ano, 'receita_total'], 1)} da receita do ano")
+    return _sankey_figura(labels, cores, nomes, src, tgt, val, lcor, lhover,
+                          f"Receita de cada ano por componente ({anos[0]}–{anos[-1]})", max(520, 90 * len(anos)))
 
 
 def render(janela):
@@ -173,7 +223,16 @@ def render(janela):
         col.markdown(f"<div style='display:flex;align-items:center;gap:6px' title=\"{c.explica(seg)}\">"
                      f"<div style='width:12px;height:12px;background:{cor};border-radius:3px;flex-shrink:0'></div>"
                      f"<span style='font-size:12px'>{seg}</span></div>", unsafe_allow_html=True)
-    c.mostrar_grafico(_sankey(a), key="enz_sankey")
+    opcoes = [str(x) for x in anos[::-1]] + (["Todos os anos"] if len(anos) > 1 else [])
+    visao_sk = st.segmented_control("Visão do fluxo", opcoes, default=str(fim), key="enz_sk",
+                                    help="Um ano mostra a receita aberta em componentes e Mercados detalhado; "
+                                         "Todos os anos mostra quanto cada ano contribuiu para cada componente.") or str(fim)
+    if visao_sk == "Todos os anos":
+        c.mostrar_grafico(_sankey_anos(a), key="enz_sankey_todos")
+    else:
+        c.mostrar_grafico(_sankey_ano(a, int(visao_sk)), key="enz_sankey_ano")
+    st.caption("Passe o mouse em uma faixa para ver o valor e a explicação. Fatias menores que 2% da receita aparecem "
+               "só no balão.")
 
     st.markdown("**Crescimento de cada segmento na janela (cor = oportunidade)**")
     seg = pd.DataFrame([(nome, a.loc[ini, k], a.loc[fim, k]) for k, nome in dre.SEGMENTOS
@@ -278,7 +337,7 @@ def render(janela):
                                        for q, p, v in zip(tri, part[s], valores_t[s])], hoverinfo="text")
         c.layout_base(fig, "Participação de cada segmento na receita (trimestral)", y_titulo="% da receita total")
         fig.update_yaxes(range=[0, 100], ticksuffix="%")
-        fig.update_xaxes(type="category")
+        fig.update_xaxes(type="category", tickangle=-45, nticks=14)
         c.mostrar_grafico(fig, key="enz_part")
         c.leitura(f"Renda Variável: {pct(part['Renda Variável'].iloc[0], 1)} ({tri[0]}) → "
                   f"<b>{pct(part['Renda Variável'].iloc[-1], 1)}</b> ({tri[-1]}). Dados/Tecnologia: "
@@ -298,11 +357,12 @@ def render(janela):
                                    + c.dica("Renda Variável") for q, v, nv in zip(tri, serie, niv)], hoverinfo="text")
         media = float(serie.mean())
         fig.add_hline(y=media, line_dash="dash", line_color="#9e9e9e",
-                      annotation_text=f"Média do período: R$ {br(media, 0)} mi", annotation_position="bottom left")
+                      annotation_text=f"Média: R$ {br(media, 0)} mi", annotation_position="top right",
+                      annotation_font=dict(size=11))
         c.layout_base(fig, "Receita de Renda Variável por trimestre (cor = variação a/a)", y_titulo="R$ milhões",
                       legenda=False)
-        fig.update_yaxes(range=[serie.min() * 0.9, serie.max() * 1.08])
-        fig.update_xaxes(type="category")
+        fig.update_yaxes(range=[serie.min() * 0.85, serie.max() * 1.1])
+        fig.update_xaxes(type="category", tickangle=-45, nticks=14)
         c.mostrar_grafico(fig, key="enz_rvtri")
         c.leitura(f"Pico em {serie.idxmax()} (R$ {br(serie.max(), 0)} mi) e vale em {serie.idxmin()} "
                   f"(R$ {br(serie.min(), 0)} mi). O ADTV não consta na DRE; a receita de Renda Variável é a referência.")

@@ -1,10 +1,14 @@
 """Aba 0 · Visão geral — contextualização para a apresentação (ficha técnica, ODS, ferramentas e fontes)."""
+from pathlib import Path
+
 import streamlit as st
 
 from utils import comum as c
 from utils import dre
 from utils import solidez_data as sd
 from utils.comum import br
+
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 # Cores oficiais dos ícones dos ODS (ONU)
 ODS = [
@@ -64,8 +68,24 @@ ABAS = [
 ]
 
 
+def _logo():
+    """Logo da B3, se o arquivo estiver em data/ (logo_b3.svg ou logo_b3.png)."""
+    for nome in ("logo_b3.svg", "logo_b3.png"):
+        caminho = DATA_DIR / nome
+        if caminho.exists():
+            return caminho
+    return None
+
+
 def render(janela):
-    st.markdown("## 🏛️ Visão geral: B3 S.A. — Brasil, Bolsa, Balcão")
+    logo = _logo()
+    if logo:
+        g_logo, g_tit = st.columns([1, 6], vertical_alignment="center")
+        g_logo.image(str(logo), width=120)
+        with g_tit:
+            st.markdown("## Visão geral: B3 S.A. — Brasil, Bolsa, Balcão")
+    else:
+        st.markdown("## 🏛️ Visão geral: B3 S.A. — Brasil, Bolsa, Balcão")
     st.caption("Contextualização da Sprint 2: quem é a empresa, que ODS ela toca e com que ferramentas e fontes o "
                "grupo trabalhou.")
 
