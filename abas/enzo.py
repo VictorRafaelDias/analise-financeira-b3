@@ -106,6 +106,7 @@ def construir_sankey(valores, periodos, titulo):
 
     fig = go.Figure(go.Sankey(
         arrangement="perpendicular",
+        domain=dict(x=[0.12, 0.88], y=[0, 1]),  # mais estreito e centralizado
         textfont=dict(size=12),
         node=dict(pad=6, thickness=16, line=dict(color="black", width=0.4), label=labels, color=cores_no,
                   x=x_no, y=y_no, customdata=dados, hovertemplate="%{customdata}<extra></extra>"),
@@ -113,7 +114,7 @@ def construir_sankey(valores, periodos, titulo):
                   hovertemplate="%{source.customdata} → %{target.customdata}<extra></extra>"),
     ))
     fig.update_layout(title=dict(text=titulo, y=1, yref="container", yanchor="top", pad=dict(t=34)),
-                      margin=dict(l=10, r=10, t=80, b=10), font=dict(size=13), height=640 if n > 1 else 460,
+                      margin=dict(l=10, r=10, t=80, b=10), font=dict(size=13), height=560 if n > 1 else 440,
                       separators=",.")
     return fig
 
