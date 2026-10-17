@@ -405,9 +405,7 @@ def micro_bloco4_acumulado(anual, unidade, anos=(2021, 2025)):
     fig.add_scatter(x=x, y=b, name="Devolvido ao acionista, pago (acumulado)", mode="lines+markers",
                     line=dict(color=AZUL, width=3), fill="tonexty", fillcolor="rgba(214,69,69,0.10)",
                     hovertemplate="%{y:,.1f}")
-    for serie_, cor in ((a, CINZA_ESCURO), (b, AZUL)):
-        fig.add_annotation(x=len(x) - 1, y=serie_.iloc[-1], text=f"<b>{br(serie_.iloc[-1], dec)}</b>",
-                           showarrow=False, xshift=26, font=dict(color=cor))
+    # valores em todos os pontos: padrão aplicado em mostrar_grafico (utils/comum.py)
     _layout(fig, height=400, y_title=f"R$ {suf}")
     fig.update_yaxes(rangemode="tozero")
     return fig

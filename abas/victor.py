@@ -25,6 +25,21 @@ def visao(key):
                                 label_visibility="collapsed") or "Macro"
 
 
+def botoes(rotulo, opcoes, padrao, key):
+    """Escolha por botões (como no Sankey do Enzo): botões lado a lado; listas longas viram pílulas que quebram linha."""
+    opcoes = list(opcoes)
+    if len(opcoes) <= 8:
+        escolha = st.segmented_control(rotulo, opcoes, default=padrao, key=key)
+    else:
+        escolha = st.pills(rotulo, opcoes, default=padrao, key=key)
+    return escolha or padrao
+
+
+def intervalo(rotulo, opcoes, de, ate, key):
+    """Par De/Até num controle deslizante de dois pontos."""
+    return st.select_slider(rotulo, list(opcoes), value=(de, ate), key=key)
+
+
 def cabecalho(n, nome, tese, abertura):
     cm.cabecalho_secao(f"Bloco {n} · {nome}", tese, abertura)
 
@@ -199,7 +214,7 @@ def render(janela):
         base = anual if gran == "Anual" else tri
         base = base[(base["ano"] >= anos[0]) & (base["ano"] <= anos[1])]
         opcoes = list(base["periodo"])
-        per = st.selectbox("Período", opcoes, index=len(opcoes) - 1, key=f"p1_{gran_saldo}")
+        per = botoes("Período", opcoes, opcoes[-1], key=f"p1_{gran_saldo}")
         rr = base[base["periodo"] == per].iloc[0]
         st.markdown("**Do caixa ao caixa líquido**")
         plot(sc.micro_bloco1_cascata(rr, unidade))
@@ -299,9 +314,7 @@ def render(janela):
     else:
         st.markdown("**Ponte da alavancagem entre dois trimestres**")
         qs = list(tri_ltm["trimestre"])
-        c0, c1 = st.columns(2)
-        q0 = c0.selectbox("De", qs, index=qs.index("1T24"), key="p2_de")
-        q1 = c1.selectbox("Até", qs, index=len(qs) - 1, key="p2_ate")
+        q0, q1 = intervalo("De / Até", qs, "1T24" if "1T24" in qs else qs[0], qs[-1], key="p2_intervalo")
         r0, r1 = tri_ltm[tri_ltm["trimestre"] == q0].iloc[0], tri_ltm[tri_ltm["trimestre"] == q1].iloc[0]
         plot(sc.micro_bloco2_ponte(r0, r1, q0, q1))
         ef_e = r0["divida_bruta"] / r1["ebitda_recorrente_ltm"] - r0["divida_bruta_ebitda_ltm"]
@@ -318,7 +331,7 @@ def render(janela):
         base = anual[(anual["ano"] >= anos[0]) & (anual["ano"] <= anos[1])]
         opcoes = list(base["periodo"])
         padrao = opcoes.index("2025") if "2025" in opcoes else len(opcoes) - 1
-        per = st.selectbox("Ano", opcoes, index=padrao, key="p2_ano")
+        per = botoes("Ano", opcoes, opcoes[padrao], key="p2_ano")
         ra2 = base[base["periodo"] == per].iloc[0]
         plot(sc.micro_bloco2_ebitda(ra2, unidade))
         desp = {n: -ra2[c] for c, n in sd.CASCATA_DESPESAS}
@@ -374,7 +387,7 @@ def render(janela):
         base = anual[(anual["ano"] >= anos[0]) & (anual["ano"] <= anos[1])]
         opcoes = list(base["periodo"])
         padrao = opcoes.index("2025") if "2025" in opcoes else len(opcoes) - 1
-        per = st.selectbox("Ano", opcoes, index=padrao, key="p3_ano")
+        per = botoes("Ano", opcoes, opcoes[padrao], key="p3_ano")
         r3 = base[base["periodo"] == per].iloc[0]
         st.markdown("**Do lucro ao FCL depois dos juros (só linhas oficiais)**")
         plot(sc.micro_bloco3(r3, unidade))
@@ -443,9 +456,7 @@ def render(janela):
     else:
         st.markdown("**Ponte da folga entre dois trimestres**")
         qs = list(tri["trimestre"])
-        c0, c1 = st.columns(2)
-        q0 = c0.selectbox("De", qs, index=qs.index("4T20"), key="p4_de")
-        q1 = c1.selectbox("Até", qs, index=len(qs) - 1, key="p4_ate")
+        q0, q1 = intervalo("De / Até", qs, "4T20", qs[-1], key="p4_intervalo")
         i0, i1 = qs.index(q0), qs.index(q1)
         if i1 <= i0:
             st.info("Escolha um trimestre final posterior ao inicial.")

@@ -22,6 +22,9 @@ CORES_SEGMENTOS = {
     "Outros": "#7f7f7f",
     "Outras receitas": "#9467bd",
 }
+COR_RAIZ = "#4d4d4d"
+COR_ANO = "#17becf"
+
 CORES_PART = {
     "Renda Variável": "#54a24b",
     "Derivativos": "#4c78a8",
@@ -44,98 +47,61 @@ def _participacao(t):
     return v, v.div(total, axis=0)
 
 
-MERCADOS_ABERTURA = [("derivativos", "Derivativos", "#4c78a8"), ("renda_variavel", "Renda Variável", "#54a24b"),
-                     ("rf_credito", "Renda Fixa e Crédito", "#f58518"), ("emprestimo_ativos", "Empréstimo de Ativos", "#9e9e9e")]
+def formatar_valor(v):
+    """Formato do Enzo: 'R$ 9.327.395 mil' (entrada em R$ mil)."""
+    return f"R$ {v:,.0f}".replace(",", ".") + " mil"
 
 
-def _rgba(cor, alfa=0.35):
-    h = cor.lstrip("#")
-    return f"rgba({int(h[0:2], 16)},{int(h[2:4], 16)},{int(h[4:6], 16)},{alfa})"
+def construir_sankey(valores, periodos, titulo):
+    """Sankey original do Enzo (posições, cores, rótulos e altura dele), para os períodos pedidos.
 
+    Vários períodos: Receita total do intervalo → cada período → os 7 componentes de cada período.
+    Um período só: Receita total do período → os 7 componentes (sem repetir a coluna do meio).
+    valores: DataFrame período x chaves da DRE (R$ mil).
+    """
+    labels, cores_no, x_no, y_no = [], [], [], []
+    source, target, value, link_color = [], [], [], []
+    n = len(periodos)
+    total = valores.loc[periodos, "receita_total"]
 
-def _sankey_figura(labels, cores, nomes, src, tgt, val, lcor, lhover, titulo, altura):
+    idx_raiz = 0
+    rotulo_raiz = f"{periodos[0]}-{periodos[-1]}" if n > 1 else str(periodos[0])
+    labels.append(f"Receita Total {rotulo_raiz}<br>{formatar_valor(float(total.sum()))}")
+    cores_no.append(COR_RAIZ); x_no.append(0.32); y_no.append(0.5)
+
+    idx_periodo = {}
+    if n > 1:
+        for i, p in enumerate(periodos):
+            idx_periodo[p] = len(labels)
+            labels.append(f"{p}<br>{formatar_valor(float(total[p]))}")
+            cores_no.append(COR_ANO); x_no.append(0.49); y_no.append((i + 0.5) / n)
+    else:
+        idx_periodo[periodos[0]] = idx_raiz
+
+    for i, p in enumerate(periodos):
+        segs = [(k, nome) for k, nome in dre.SEGMENTOS if float(valores.loc[p, k]) != 0]
+        for j, (k, nome) in enumerate(segs):
+            v = float(valores.loc[p, k])
+            labels.append(formatar_valor(v))
+            cores_no.append(CORES_SEGMENTOS[nome]); x_no.append(0.69); y_no.append((i + (j + 0.5) / len(segs)) / n)
+            source.append(idx_periodo[p]); target.append(len(labels) - 1); value.append(v)
+            h = CORES_SEGMENTOS[nome].lstrip("#")
+            link_color.append(f"rgba({int(h[0:2], 16)},{int(h[2:4], 16)},{int(h[4:6], 16)},0.4)")
+        if n > 1:
+            source.append(idx_raiz); target.append(idx_periodo[p]); value.append(float(total[p]))
+            link_color.append("rgba(150,150,150,0.4)")
+
     fig = go.Figure(go.Sankey(
-        arrangement="snap",
-        textfont=dict(size=13),
-        node=dict(pad=22, thickness=22, line=dict(color="rgba(0,0,0,0.3)", width=0.5), label=labels, color=cores,
-                  customdata=nomes, hovertemplate="%{customdata}<extra></extra>"),
-        link=dict(source=src, target=tgt, value=val, color=lcor, customdata=lhover,
-                  hovertemplate="%{customdata}<extra></extra>"),
+        arrangement="perpendicular",
+        node=dict(pad=10, thickness=14, line=dict(color="black", width=0.4), label=labels, color=cores_no,
+                  x=x_no, y=y_no, hovertemplate="%{label}<br>R$ %{value:,.0f} mil<extra></extra>"),
+        link=dict(source=source, target=target, value=value, color=link_color,
+                  hovertemplate="%{source.label} -> %{target.label}<br>R$ %{value:,.0f} mil<extra></extra>"),
     ))
-    c.layout_base(fig, titulo, altura=altura, legenda=False)
-    fig.update_layout(margin=dict(l=10, r=10, t=60, b=10))
+    fig.update_layout(title=dict(text=titulo, y=1, yref="container", yanchor="top", pad=dict(t=34)),
+                      margin=dict(l=10, r=10, t=80, b=10), font=dict(size=13), height=850 if n > 1 else 560,
+                      separators=",.")
     return fig
-
-
-def _sankey_ano(a, ano):
-    """Um ano: receita total → 7 componentes → abertura de Mercados. Rótulos com nome, valor e % da receita."""
-    r = a.loc[ano]
-    total = r["receita_total"]
-
-    def rot(nome, v):
-        # rótulo visível só para fatias de pelo menos 2% (as menores ficam no balão do mouse)
-        return f"{nome}<br>R$ {br(v / 1e6, 2)} bi · {pct(v / total, 1)}" if v / total >= 0.02 else ""
-
-    labels = [f"Receita total {ano}<br>R$ {br(total / 1e6, 2)} bi"]
-    cores = ["#4d4d4d"]
-    nomes = [f"<b>Receita total {ano}</b><br>R$ {br(total / 1e6, 2)} bi" + c.dica("Receita bruta")]
-    idx = {}
-    for k, n in dre.SEGMENTOS:
-        if r[k] <= 0:
-            continue
-        idx[k] = len(labels)
-        labels.append(rot(n, r[k]))
-        cores.append(CORES_SEGMENTOS[n])
-        nomes.append(f"<b>{n}</b><br>R$ {br(r[k] / 1e6, 2)} bi · {pct(r[k] / total, 1)} da receita" + c.dica(n))
-    src, tgt, val, lcor, lhover = [], [], [], [], []
-    for k, n in dre.SEGMENTOS:
-        if k in idx:
-            src.append(0); tgt.append(idx[k]); val.append(r[k] / 1e6)
-            lcor.append(_rgba(CORES_SEGMENTOS[n]))
-            lhover.append(f"<b>{n}</b><br>R$ {br(r[k] / 1e6, 2)} bi · {pct(r[k] / total, 1)} da receita")
-    for k, n, cor in MERCADOS_ABERTURA:
-        if r[k] <= 0:
-            continue
-        labels.append(rot(n, r[k]))
-        cores.append(cor)
-        nomes.append(f"<b>{n}</b> (dentro de Mercados)<br>R$ {br(r[k] / 1e6, 2)} bi · {pct(r[k] / total, 1)} da receita"
-                     + c.dica(n))
-        src.append(idx["mercados"]); tgt.append(len(labels) - 1); val.append(r[k] / 1e6)
-        lcor.append(_rgba(cor)); lhover.append(f"<b>Mercados → {n}</b><br>R$ {br(r[k] / 1e6, 2)} bi")
-    return _sankey_figura(labels, cores, nomes, src, tgt, val, lcor, lhover,
-                          f"De onde vem a receita da B3 em {ano}", 560)
-
-
-def _sankey_anos(a):
-    """Todos os anos: cada ano → os 7 componentes somados no período."""
-    anos = list(a.index)
-    labels, cores, nomes = [], [], []
-    for ano in anos:
-        labels.append(f"{ano} · R$ {br(a.loc[ano, 'receita_total'] / 1e6, 2)} bi")
-        cores.append("#17becf")
-        nomes.append(f"<b>Receita total {ano}</b>" + c.dica("Receita bruta"))
-    soma = a[[k for k, _ in dre.SEGMENTOS]].sum()
-    total = soma.sum()
-    idx = {}
-    for k, n in dre.SEGMENTOS:
-        if soma[k] <= 0:
-            continue
-        idx[k] = len(labels)
-        labels.append(f"{n}<br>R$ {br(soma[k] / 1e6, 1)} bi · {pct(soma[k] / total, 1)}" if soma[k] / total >= 0.02 else "")
-        cores.append(CORES_SEGMENTOS[n])
-        nomes.append(f"<b>{n}</b> ({anos[0]}–{anos[-1]})<br>R$ {br(soma[k] / 1e6, 2)} bi · {pct(soma[k] / total, 1)}"
-                     + c.dica(n))
-    src, tgt, val, lcor, lhover = [], [], [], [], []
-    for i, ano in enumerate(anos):
-        for k, n in dre.SEGMENTOS:
-            v = a.loc[ano, k]
-            if k in idx and v > 0:
-                src.append(i); tgt.append(idx[k]); val.append(v / 1e6)
-                lcor.append(_rgba(CORES_SEGMENTOS[n], 0.3))
-                lhover.append(f"<b>{n} · {ano}</b><br>R$ {br(v / 1e6, 2)} bi · "
-                              f"{pct(v / a.loc[ano, 'receita_total'], 1)} da receita do ano")
-    return _sankey_figura(labels, cores, nomes, src, tgt, val, lcor, lhover,
-                          f"Receita de cada ano por componente ({anos[0]}–{anos[-1]})", max(520, 90 * len(anos)))
 
 
 def render(janela):
@@ -223,16 +189,22 @@ def render(janela):
         col.markdown(f"<div style='display:flex;align-items:center;gap:6px' title=\"{c.explica(seg)}\">"
                      f"<div style='width:12px;height:12px;background:{cor};border-radius:3px;flex-shrink:0'></div>"
                      f"<span style='font-size:12px'>{seg}</span></div>", unsafe_allow_html=True)
-    opcoes = [str(x) for x in anos[::-1]] + (["Todos os anos"] if len(anos) > 1 else [])
-    visao_sk = st.segmented_control("Visão do fluxo", opcoes, default=str(fim), key="enz_sk",
-                                    help="Um ano mostra a receita aberta em componentes e Mercados detalhado; "
-                                         "Todos os anos mostra quanto cada ano contribuiu para cada componente.") or str(fim)
-    if visao_sk == "Todos os anos":
-        c.mostrar_grafico(_sankey_anos(a), key="enz_sankey_todos")
+    ver = st.segmented_control("Ver o fluxo por", ["Todos os anos", "Ano", "Trimestre"], default="Todos os anos",
+                               key="enz_sk_modo") or "Todos os anos"
+    if ver == "Ano":
+        ano_sk = st.segmented_control("Ano", [str(x) for x in anos[::-1]], default=str(fim), key="enz_sk_ano") or str(fim)
+        fig_sk = construir_sankey(a.rename(index=str), [ano_sk], f"B3 - Composição da Receita Total ({ano_sk})")
+    elif ver == "Trimestre":
+        trimestres = list(t.index)
+        tri_sk = (st.select_slider("Trimestre", trimestres, value=trimestres[-1], key="enz_sk_tri")
+                  if len(trimestres) > 1 else trimestres[0])
+        fig_sk = construir_sankey(t, [tri_sk], f"B3 - Composição da Receita Total ({tri_sk})")
     else:
-        c.mostrar_grafico(_sankey_ano(a, int(visao_sk)), key="enz_sankey_ano")
-    st.caption("Passe o mouse em uma faixa para ver o valor e a explicação. Fatias menores que 2% da receita aparecem "
-               "só no balão.")
+        fig_sk = construir_sankey(a.rename(index=str), [str(x) for x in anos],
+                                  f"B3 - Composição da Receita Total ({ini}-{fim})")
+    c.mostrar_grafico(fig_sk, key="enz_sankey")
+    st.caption("Sankey original do Enzo. Cada cor é um componente da receita (legenda acima); passe o mouse para ver "
+               "de onde vem e para onde vai cada valor.")
 
     st.markdown("**Crescimento de cada segmento na janela (cor = oportunidade)**")
     seg = pd.DataFrame([(nome, a.loc[ini, k], a.loc[fim, k]) for k, nome in dre.SEGMENTOS
