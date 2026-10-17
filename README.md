@@ -2,6 +2,11 @@
 
 ## ▶️ Abrir o painel com um clique
 
+**Online:** [painel-financeiro-b3.streamlit.app](https://painel-financeiro-b3.streamlit.app) (atualiza sozinho a cada envio
+para a `main`).
+
+**Pelo GitHub (Codespaces):**
+
 [![Abrir o painel no GitHub](https://github.com/codespaces/badge.svg)](https://codespaces.new/VictorRafaelDias/analise-financeira-b3?quickstart=1)
 
 1. Clique no botão acima e em **Create codespace** (ou **Resume**, se já tiver um).
