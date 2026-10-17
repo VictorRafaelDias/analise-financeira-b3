@@ -1,0 +1,21 @@
+{
+  "name": "Análise Financeira B3",
+  "image": "mcr.microsoft.com/devcontainers/python:3.12",
+  "customizations": {
+    "codespaces": {
+      "openFiles": ["README.md", "app.py"]
+    },
+    "vscode": {
+      "extensions": ["ms-python.python"]
+    }
+  },
+  "updateContentCommand": "python -m pip install --upgrade pip && python -m pip install -r requirements.txt",
+  "postAttachCommand": "python -m streamlit run app.py --server.enableCORS false --server.enableXsrfProtection false --server.headless true",
+  "portsAttributes": {
+    "8501": {
+      "label": "Painel B3",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "forwardPorts": [8501]
+}

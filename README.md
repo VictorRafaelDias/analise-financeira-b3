@@ -1,5 +1,15 @@
 # 📊 Análise Financeira B3
 
+[![Abrir no GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/VictorRafaelDias/analise-financeira-b3?quickstart=1)
+
+**Ver o painel com um clique:** clique no botão acima. O GitHub monta o ambiente, instala tudo, sobe o Streamlit e
+abre o painel numa aba do navegador (a primeira vez leva 2–3 minutos; depois, segundos). Se o navegador bloquear
+a aba, abra a aba **PORTS** no rodapé e clique no 🌐 da porta 8501.
+
+**Publicar no Streamlit Community Cloud (link fixo):** [clique aqui para fazer o deploy](https://share.streamlit.io/deploy?repository=VictorRafaelDias/analise-financeira-b3&branch=main&mainModule=app.py),
+entre com a conta do GitHub, escolha o endereço (ex.: `analise-financeira-b3`) e clique em **Deploy**.
+Como o repositório é privado, o app nasce privado: convide o grupo e o professor em **Share** no app.
+
 Painel em **Streamlit** que analisa a **B3 S.A. – Brasil, Bolsa, Balcão** (B3SA3) a partir de dados oficiais.
 Projeto Integrador III · Tecnologia em Ciência de Dados.
 
