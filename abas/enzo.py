@@ -133,8 +133,23 @@ def render(janela):
     if not anos:
         st.warning("A janela escolhida não tem ano fechado (2020–2025).")
         return
-    a = dre.anual(valores, anos)
     t = dre.trimestral(valores, janela.ano_ini, janela.ano_fim)
+
+    # Filtros próprios do painel original do Enzo (dentro da janela global da barra lateral)
+    f1, f2 = st.columns(2)
+    with f1:
+        if len(anos) > 1:
+            a_ini, a_fim = st.select_slider("Período anual (KPIs e gráficos anuais)", options=anos,
+                                            value=(anos[0], anos[-1]), key=f"enz_anual_{anos[0]}_{anos[-1]}")
+            anos = [x for x in anos if a_ini <= x <= a_fim]
+    with f2:
+        trimestres_janela = list(t.index)
+        if len(trimestres_janela) > 1:
+            t_ini, t_fim = st.select_slider("Período trimestral (gráficos trimestrais)", options=trimestres_janela,
+                                            value=(trimestres_janela[0], trimestres_janela[-1]),
+                                            key=f"enz_tri_{trimestres_janela[0]}_{trimestres_janela[-1]}")
+            t = t.loc[t_ini:t_fim]
+    a = dre.anual(valores, anos)
     ini, fim = anos[0], anos[-1]
     ant = fim - 1 if fim - 1 in a.index else None
     n = fim - ini
