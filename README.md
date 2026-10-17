@@ -16,7 +16,7 @@ quando terminar (o codespace para sozinho depois de 30 minutos parado).
 
 **Tema claro ou escuro:** escolha em **🎨 Tema**, no topo da barra lateral. Vale para o painel e os gráficos.
 
-**Logo da B3:** coloque o arquivo oficial em `data/logo_b3.svg` (ou `.png`) e ele aparece na Visão geral.
+**Logo da B3:** `data/logo_b3.svg` (oficial, de [Wikimedia Commons · Logotipo_da_B3.svg](https://commons.wikimedia.org/wiki/File:Logotipo_da_B3.svg)) e `data/logo_b3_branco.svg` (mesma marca em branco, para o tema escuro).
 
 Painel em **Streamlit** que analisa a **B3 S.A. – Brasil, Bolsa, Balcão** (B3SA3) a partir de dados oficiais.
 Projeto Integrador III · Tecnologia em Ciência de Dados.

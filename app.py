@@ -44,7 +44,14 @@ with st.sidebar:
 # ======================================================================================
 # Cabeçalho
 # ======================================================================================
-st.title("📊 B3 S.A. — Painel Integrado de Análise")
+logo = c.logo_b3()
+if logo:
+    st.logo(logo, size="large")
+    g_logo, g_tit = st.columns([1, 9], vertical_alignment="center")
+    g_logo.image(logo, width=110)
+    g_tit.title("B3 S.A. — Painel Integrado de Análise")
+else:
+    st.title("📊 B3 S.A. — Painel Integrado de Análise")
 st.caption(f"PI III · Desenvolvimento de mercado, receita, eficiência e solidez financeira da B3 · janela "
            f"{janela.rotulo()} · fontes oficiais da B3 (RI, 2T26) e dados de mercado da B3")
 valores, rotulos, _ = dre.carregar_dre()

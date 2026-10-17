@@ -69,19 +69,14 @@ ABAS = [
 
 
 def _logo():
-    """Logo da B3, se o arquivo estiver em data/ (logo_b3.svg ou logo_b3.png)."""
-    for nome in ("logo_b3.svg", "logo_b3.png"):
-        caminho = DATA_DIR / nome
-        if caminho.exists():
-            return caminho
-    return None
+    return c.logo_b3()
 
 
 def render(janela):
     logo = _logo()
     if logo:
         g_logo, g_tit = st.columns([1, 6], vertical_alignment="center")
-        g_logo.image(str(logo), width=120)
+        g_logo.image(logo, width=120)
         with g_tit:
             st.markdown("## Visão geral: B3 S.A. — Brasil, Bolsa, Balcão")
     else:

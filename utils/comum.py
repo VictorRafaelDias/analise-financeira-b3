@@ -420,9 +420,38 @@ def cascata(passos, titulo=None, altura=480, y_titulo="R$ bilhões", dec=2, esca
     return fig
 
 
+def rotular_linhas(fig):
+    """Padrão do grupo: todo gráfico de linha mostra o valor em cada ponto.
+
+    Linhas sem rótulo (ou com rótulo só em alguns pontos) ganham o valor em todos os pontos, com as casas
+    decimais pelo tamanho do número e o sufixo do eixo (%, x). Áreas empilhadas ficam de fora.
+    """
+    for t in fig.data:
+        if t.type != "scatter" or "lines" not in (t.mode or "lines") or t.stackgroup or t.y is None:
+            continue
+        y = pd.to_numeric(pd.Series(list(t.y)), errors="coerce")
+        if y.isna().all():
+            continue
+        texto = list(t.text) if t.text is not None and not isinstance(t.text, str) else None
+        completo = t.texttemplate or (texto is not None and len(texto) == len(y) and all(str(x).strip() for x in texto))
+        modo = set((t.mode or "lines").split("+"))
+        if not completo:
+            eixo = fig.layout.yaxis2 if t.yaxis == "y2" else fig.layout.yaxis
+            sufixo = eixo.ticksuffix or ""
+            maior = y.abs().max()
+            dec = 0 if maior >= 100 else 1 if maior >= 10 else 2
+            t.text = None
+            t.texttemplate = f"%{{y:,.{dec}f}}{sufixo}"
+            t.textposition = t.textposition or "top center"
+            t.textfont = dict(size=11 if len(y) <= 12 else 9, color=(t.textfont.color if t.textfont else None))
+        t.mode = "+".join(sorted(modo | {"lines", "markers", "text"}, key=["lines", "markers", "text"].index))
+    return fig
+
+
 def mostrar_grafico(fig, key=None, **kw):
     """Padrão de exibição: largura total, botão de tela cheia do Streamlit e barra de escala do Plotly."""
     fig.update_layout(separators=",.")
+    rotular_linhas(fig)
     ajustar_tema(fig)
     return st.plotly_chart(fig, width="stretch", config=CONFIG_GRAFICO, key=key, **kw)
 
@@ -561,6 +590,14 @@ CLAREAR = {"#4B5563": "#CBD5E1", "#4b5563": "#CBD5E1", "#111111": "#E5E7EB", "#3
            "#142B4A": "#E6EDF5", "#4d4d4d": "#9CA3AF"}
 
 
+def logo_b3():
+    """Logo oficial da B3 (Wikimedia Commons, Logotipo_da_B3.svg); versão branca no tema escuro."""
+    from pathlib import Path
+    pasta = Path(__file__).resolve().parent.parent / "data"
+    caminho = pasta / ("logo_b3_branco.svg" if tema_atual() == "dark" else "logo_b3.svg")
+    return str(caminho) if caminho.exists() else None
+
+
 def tema_atual():
     """'light' ou 'dark': a escolha da barra lateral (?tema=) manda; senão, o tema detectado pelo navegador."""
     escolha = st.query_params.get("tema")
@@ -579,6 +616,15 @@ def seletor_tema():
     escolha = st.radio("🎨 Tema", ["☀️ Claro", "🌙 Escuro"], index=1 if atual == "dark" else 0, horizontal=True,
                        key="tema_sel", help="Muda as cores de todo o painel e dos gráficos.")
     nova = "dark" if "Escuro" in escolha else "light"
+    if nova == atual and st.query_params.get("tema") in ("claro", "escuro"):
+        # Link com ?tema= aberto num navegador que guardou o outro tema: alinha o Streamlit com a URL.
+        valor = "Dark" if atual == "dark" else "Light"
+        st.html(
+            "<script>"
+            "const k='stActiveTheme-'+location.pathname+'-v2';"
+            f"if(localStorage.getItem(k)!==JSON.stringify('{valor}')){{"
+            f"localStorage.setItem(k, JSON.stringify('{valor}'));location.reload();}}"
+            "</script>", unsafe_allow_javascript=True)
     if nova != atual:
         valor, param = ("Dark", "escuro") if nova == "dark" else ("Light", "claro")
         # Script fixo (sem entrada do usuário): grava o tema do Streamlit no navegador e recarrega com ?tema=.
