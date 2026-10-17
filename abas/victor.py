@@ -76,7 +76,12 @@ def render(janela):
                             help="Declarado: aba de proventos (competência). Pago: DFC (caixa).")
         destacar = f[3].toggle("Destacar incoerências", value=True, key="vic_dest",
                                help="Mostra a linha oficial de aplicações ao lado do FCO e o aviso de garantias de terceiros.")
-        st.caption(f"Filtros desta aba. A janela de anos ({janela.rotulo()}) é a da barra lateral, igual para todas as abas; "
+        # Filtro "Anos" do painel original do Victor, dentro da janela global da barra lateral
+        if janela.ano_fim > janela.ano_ini:
+            anos = st.slider("Anos", janela.ano_ini, janela.ano_fim, (janela.ano_ini, janela.ano_fim),
+                             key=f"vic_anos_{janela.ano_ini}_{janela.ano_fim}",
+                             help="Anos desta aba; o limite é a janela da barra lateral.")
+        st.caption(f"Filtros desta aba. Os anos ficam dentro da janela da barra lateral ({janela.rotulo()}); "
                    "a faixa de alavancagem é fixa: 2,0x e 2,5x (referência Moody's).")
 
     div, suf, dec_padrao = sd.escala(unidade)

@@ -22,10 +22,30 @@ with st.sidebar:
     rotulo_ano = lambda a: f"{a}*" if a > c.ULTIMO_ANO_FECHADO else str(a)
     ajuda = ("Mesma janela em todas as abas. Análises anuais usam anos fechados (até 2025); 2026* é parcial e entra "
              "até o 2T26 nos gráficos trimestrais e LTM.")
-    ano_ini = c.blocos("De", anos_opcoes, 2020, "janela_de", formato=rotulo_ano, ajuda=ajuda)
-    ano_fim = c.blocos("Até", anos_opcoes, 2026, "janela_ate", formato=rotulo_ano)
-    if ano_ini > ano_fim:
-        ano_ini, ano_fim = ano_fim, ano_ini
+    # Dois jeitos de escolher a mesma janela, sempre sincronizados: intervalo em linha e blocos De/Até.
+    # Fonte única: ss["janela"]. Ao mexer em um controle, a versão muda e os dois são recriados com o valor novo.
+    ss = st.session_state
+    ss.setdefault("janela", (2020, 2026))
+    ss.setdefault("janela_versao", 0)
+    v = ss["janela_versao"]
+
+    def _da_linha():
+        ss["janela"] = tuple(ss[f"janela_linha_{v}"])
+        ss["janela_versao"] += 1
+
+    def _dos_blocos():
+        de = ss[f"janela_de_{v}"] if ss[f"janela_de_{v}"] is not None else ss["janela"][0]
+        ate = ss[f"janela_ate_{v}"] if ss[f"janela_ate_{v}"] is not None else ss["janela"][1]
+        ss["janela"] = (min(de, ate), max(de, ate))
+        ss["janela_versao"] += 1
+
+    st.select_slider("Período (vale para todas as abas)", options=anos_opcoes, value=ss["janela"],
+                     format_func=rotulo_ano, key=f"janela_linha_{v}", on_change=_da_linha, help=ajuda)
+    st.segmented_control("De", anos_opcoes, default=ss["janela"][0], format_func=rotulo_ano, key=f"janela_de_{v}",
+                         on_change=_dos_blocos)
+    st.segmented_control("Até", anos_opcoes, default=ss["janela"][1], format_func=rotulo_ano, key=f"janela_ate_{v}",
+                         on_change=_dos_blocos)
+    ano_ini, ano_fim = ss["janela"]
     janela = c.Janela(ano_ini, ano_fim)
     st.caption(f"Anos fechados na janela: {janela.anos_fechados[0] if janela.anos_fechados else '—'}–{janela.ano_ref}"
                + (" · 2026 parcial (1T26–2T26)" if janela.inclui_parcial else ""))

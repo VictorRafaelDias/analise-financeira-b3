@@ -72,17 +72,26 @@ def render(janela):
     a = dre.anual(valores, range(2020, 2026))
     modelos = {ano: modelo(a.loc[ano]) for ano in a.index}
 
-    opcoes_base = [f"Último ano da janela ({anos[-1]})", f"Soma da janela ({anos[0]}–{anos[-1]})"]
-    base = (c.blocos("Base da ponte e dos indicadores", opcoes_base, opcoes_base[0], "joao_base",
-                     ajuda="Com vários anos, os valores são somados e as margens recalculadas (critério do João). "
-                           "A variação compara com o período imediatamente anterior de mesma duração.")
-            if len(anos) > 1 else opcoes_base[0])
-    sel = anos if base.startswith("Soma") and len(anos) > 1 else [anos[-1]]
-    rot = f"{sel[0]}–{sel[-1]}" if len(sel) > 1 else str(sel[0])
+    # Seletor original do João: um ou mais anos (dentro da janela global); vários anos são somados.
+    sel = sorted(st.multiselect(
+        "📅 Anos de análise (selecione um ou mais)", anos, default=[anos[-1]], key=f"joao_anos_{anos[0]}_{anos[-1]}",
+        help="Com vários anos, os valores são somados e as margens recalculadas. A variação compara com o período "
+             "imediatamente anterior de mesma duração (só para anos seguidos)."))
+    if not sel:
+        sel = [anos[-1]]
+        st.info(f"Nenhum ano selecionado; exibindo {anos[-1]}.")
+    seguidos = sel[-1] - sel[0] + 1 == len(sel)
+
+    def rotulo_periodo(lista):
+        if len(lista) == 1:
+            return str(lista[0])
+        return f"{lista[0]}–{lista[-1]}" if lista[-1] - lista[0] + 1 == len(lista) else ", ".join(map(str, lista))
+
+    rot = rotulo_periodo(sel)
     m = modelo(a.loc[sel].sum())
     prev = list(range(sel[0] - len(sel), sel[0]))
-    mp = modelo(a.loc[prev].sum()) if all(p in a.index for p in prev) else None
-    rot_ant = (f"{prev[0]}–{prev[-1]}" if len(prev) > 1 else str(prev[0])) if mp else None
+    mp = modelo(a.loc[prev].sum()) if seguidos and all(p in a.index for p in prev) else None
+    rot_ant = rotulo_periodo(prev) if mp else None
 
     def d(k):
         return c.var(m[k], mp[k]) if mp else None
@@ -228,20 +237,21 @@ def render(janela):
     c.cabecalho_secao("📈 Análises complementares")
     c.legenda_oportunidade()
     sub = st.tabs(["EBITDA", "Estrutura de custos", "Margens", "Pareto de custos", "Mapa hierárquico", "Variação"])
-    anos_txt = [str(x) for x in anos]
+    anos_graf = sel if len(sel) > 1 else anos  # como no original: anos escolhidos, ou a janela toda
+    anos_txt = [str(x) for x in anos_graf]
     base_custos = [(n, v, p) for n, v, p, _ in m["det"]["desp"]] + [("Depreciação e amortização", m["da"], "Nulo")]
 
     with sub[0]:
         fig = go.Figure()
-        fig.add_bar(name="EBITDA reportado", x=anos_txt, y=[modelos[x]["ebitda"] / 1e3 for x in anos],
-                    marker_color="#6c8ebf", text=[br(modelos[x]["ebitda"] / 1e3, 0) for x in anos], textposition="outside",
-                    hovertext=[f"<b>EBITDA reportado · {x}</b><br>{mi(modelos[x]['ebitda'])}" + c.dica("EBITDA") for x in anos],
+        fig.add_bar(name="EBITDA reportado", x=anos_txt, y=[modelos[x]["ebitda"] / 1e3 for x in anos_graf],
+                    marker_color="#6c8ebf", text=[br(modelos[x]["ebitda"] / 1e3, 0) for x in anos_graf], textposition="outside",
+                    hovertext=[f"<b>EBITDA reportado · {x}</b><br>{mi(modelos[x]['ebitda'])}" + c.dica("EBITDA") for x in anos_graf],
                     hoverinfo="text")
-        fig.add_bar(name="EBITDA recorrente", x=anos_txt, y=[modelos[x]["ebitda_rec"] / 1e3 for x in anos],
-                    marker_color=COR_TOTAL, text=[br(modelos[x]["ebitda_rec"] / 1e3, 0) for x in anos],
+        fig.add_bar(name="EBITDA recorrente", x=anos_txt, y=[modelos[x]["ebitda_rec"] / 1e3 for x in anos_graf],
+                    marker_color=COR_TOTAL, text=[br(modelos[x]["ebitda_rec"] / 1e3, 0) for x in anos_graf],
                     textposition="outside",
                     hovertext=[f"<b>EBITDA recorrente · {x}</b><br>{mi(modelos[x]['ebitda_rec'])}<br>Ajustes: "
-                               f"{mi(modelos[x]['ajustes'])}" + c.dica("EBITDA recorrente") for x in anos],
+                               f"{mi(modelos[x]['ajustes'])}" + c.dica("EBITDA recorrente") for x in anos_graf],
                     hoverinfo="text")
         fig.update_layout(barmode="group")
         c.layout_base(fig, "EBITDA reportado vs. recorrente (R$ milhões)", altura=460, y_titulo="R$ milhões")
@@ -279,18 +289,18 @@ def render(janela):
         fig = go.Figure()
         for nome, k, cor in [("Margem EBITDA recorrente", "margem_ebitda", COR_TOTAL),
                              ("Margem operacional", "margem_oper", "#f2b134"), ("Margem líquida", "margem_liq", COR_GANHO)]:
-            fig.add_scatter(name=nome, x=anos_txt, y=[modelos[x][k] * 100 for x in anos], mode="lines+markers+text",
-                            line=dict(color=cor, width=3), text=[f"{br(modelos[x][k] * 100)}%" for x in anos],
+            fig.add_scatter(name=nome, x=anos_txt, y=[modelos[x][k] * 100 for x in anos_graf], mode="lines+markers+text",
+                            line=dict(color=cor, width=3), text=[f"{br(modelos[x][k] * 100)}%" for x in anos_graf],
                             textposition="top center",
                             hovertext=[f"<b>{nome} · {x}</b><br>{pct(modelos[x][k], 1)}" + c.dica(
-                                nome.replace("Margem operacional", "Margem EBITDA")) for x in anos], hoverinfo="text")
+                                nome.replace("Margem operacional", "Margem EBITDA")) for x in anos_graf], hoverinfo="text")
         c.layout_base(fig, "Evolução das margens sobre a receita líquida (%)", altura=460)
         fig.update_yaxes(ticksuffix="%")
         fig.update_xaxes(type="category")
         c.mostrar_grafico(fig, key="joao_margens")
-        mi_, mf = modelos[anos[0]], modelos[anos[-1]]
-        c.leitura(f"Margem EBITDA recorrente: {pct(mi_['margem_ebitda'], 1)} ({anos[0]}) → "
-                  f"<b>{pct(mf['margem_ebitda'], 1)}</b> ({anos[-1]}); margem líquida: {pct(mi_['margem_liq'], 1)} → "
+        mi_, mf = modelos[anos_graf[0]], modelos[anos_graf[-1]]
+        c.leitura(f"Margem EBITDA recorrente: {pct(mi_['margem_ebitda'], 1)} ({anos_graf[0]}) → "
+                  f"<b>{pct(mf['margem_ebitda'], 1)}</b> ({anos_graf[-1]}); margem líquida: {pct(mi_['margem_liq'], 1)} → "
                   f"<b>{pct(mf['margem_liq'], 1)}</b>.")
 
     with sub[3]:
