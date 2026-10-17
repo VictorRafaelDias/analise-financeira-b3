@@ -598,6 +598,29 @@ def logo_b3():
     return str(caminho) if caminho.exists() else None
 
 
+def blocos(rotulo, opcoes, padrao, key, formato=None, ajuda=None):
+    """Padrão do painel para escolher anos (e outras listas curtas): bloquinhos clicáveis."""
+    escolha = st.segmented_control(rotulo, list(opcoes), default=padrao, key=key, format_func=formato or str,
+                                   help=ajuda)
+    return padrao if escolha is None else escolha
+
+
+def bloco_trimestre(rotulo, trimestres, padrao, key):
+    """Trimestre em blocos: uma fileira para o ano e outra para o trimestre (1T a 4T). Devolve '2T26'."""
+    trimestres = list(trimestres)
+    ano_de = lambda q: 2000 + int(q[-2:])
+    anos = sorted({ano_de(q) for q in trimestres})
+    padrao = padrao if padrao in trimestres else trimestres[-1]
+    g_ano, g_tri = st.columns([3, 2])
+    with g_ano:
+        ano = blocos(f"{rotulo}: ano", anos, ano_de(padrao), f"{key}_ano")
+    disponiveis = [q[:2] for q in trimestres if ano_de(q) == ano]
+    pad_tri = padrao[:2] if padrao[:2] in disponiveis else disponiveis[-1]
+    with g_tri:
+        tri = blocos(f"{rotulo}: trimestre", disponiveis, pad_tri, f"{key}_tri_{ano}")
+    return f"{tri}{str(ano)[-2:]}"
+
+
 def tema_atual():
     """'light' ou 'dark': a escolha da barra lateral (?tema=) manda; senão, o tema detectado pelo navegador."""
     escolha = st.query_params.get("tema")

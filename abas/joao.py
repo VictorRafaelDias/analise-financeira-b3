@@ -72,11 +72,11 @@ def render(janela):
     a = dre.anual(valores, range(2020, 2026))
     modelos = {ano: modelo(a.loc[ano]) for ano in a.index}
 
-    base = st.radio("Base da ponte e dos indicadores",
-                    [f"Último ano da janela ({anos[-1]})", f"Soma da janela ({anos[0]}–{anos[-1]})"],
-                    horizontal=True, key="joao_base", disabled=len(anos) == 1,
-                    help="Com vários anos, os valores são somados e as margens recalculadas (critério do João). "
-                         "A variação compara com o período imediatamente anterior de mesma duração.")
+    opcoes_base = [f"Último ano da janela ({anos[-1]})", f"Soma da janela ({anos[0]}–{anos[-1]})"]
+    base = (c.blocos("Base da ponte e dos indicadores", opcoes_base, opcoes_base[0], "joao_base",
+                     ajuda="Com vários anos, os valores são somados e as margens recalculadas (critério do João). "
+                           "A variação compara com o período imediatamente anterior de mesma duração.")
+            if len(anos) > 1 else opcoes_base[0])
     sel = anos if base.startswith("Soma") and len(anos) > 1 else [anos[-1]]
     rot = f"{sel[0]}–{sel[-1]}" if len(sel) > 1 else str(sel[0])
     m = modelo(a.loc[sel].sum())
@@ -368,7 +368,7 @@ def render(janela):
     c.cabecalho_secao("📋 DRE gerencial completa — B3 (IS New Seg)")
     f1, f2, f3 = st.columns(3)
     with f1:
-        visao = st.radio("Colunas da tabela", ["Anos da janela", "Todos os períodos"], horizontal=True, key="joao_visao")
+        visao = c.blocos("Colunas da tabela", ["Anos da janela", "Todos os períodos"], "Anos da janela", "joao_visao")
     with f2:
         modo_foco = st.checkbox("🎯 Modo foco / auditoria", value=False, key="joao_foco")
     with f3:
