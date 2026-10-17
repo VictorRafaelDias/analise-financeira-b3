@@ -2,11 +2,39 @@
 
 Rodar:  python -m streamlit run app.py
 """
+import importlib
+import os
+
 import streamlit as st
 
+import abas.camila_mercado
+import utils.comum
+import utils.dre
+import utils.solidez_charts
+import utils.solidez_data
 from abas import camila, conclusao, enzo, introducao, joao, victor
-from utils import comum as c
-from utils import dre
+
+# O Streamlit relê o app.py a cada atualização, mas guarda os módulos importados na memória (no Streamlit Cloud,
+# isso deixava o app.py novo chamando funções que a versão antiga de utils/comum.py não tinha). Aqui cada módulo
+# do painel é recarregado quando o arquivo dele muda; utils antes de abas, porque as abas dependem deles.
+_MODULOS = [utils.comum, utils.dre, utils.solidez_data, utils.solidez_charts, abas.camila_mercado,
+            camila, enzo, joao, victor, introducao, conclusao]
+
+
+@st.cache_resource
+def _versoes_modulos():
+    return {}
+
+
+_versoes = _versoes_modulos()
+for _m in _MODULOS:
+    _mtime = os.path.getmtime(_m.__file__)
+    if _versoes.get(_m.__name__) != _mtime:
+        importlib.reload(_m)  # primeira execução do processo ou arquivo alterado
+        _versoes[_m.__name__] = _mtime
+
+from utils import comum as c  # noqa: E402  (depois do recarregamento)
+from utils import dre  # noqa: E402
 
 st.set_page_config(page_title="B3 · Painel Integrado", page_icon="📊", layout="wide")
 c.aplicar_css()
