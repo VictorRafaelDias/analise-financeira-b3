@@ -17,10 +17,11 @@ COR_TOTAL, COR_QUEDA, COR_GANHO = "#1f77b4", "#d62728", "#2ca02c"
 NOMES_DRILL = {"ded": "Deduções e impostos", "desp": "Despesas operacionais", "bx": "D&A, financeiro e IR"}
 
 
-def mi(v_mil, casas=1):
-    """Formato do João: R$ mi, ou R$ bi acima de mil milhões. Entrada em R$ mil."""
+def mi(v_mil, casas=1, so_mi=False):
+    """Formato do João: R$ mi, ou R$ bi acima de mil milhões. Entrada em R$ mil.
+    so_mi=True mantém em milhões (balões de gráficos com eixo em R$ milhões)."""
     v = v_mil / 1e3
-    if abs(v) >= 1000:
+    if abs(v) >= 1000 and not so_mi:
         return f"R$ {br(v / 1000, 2)} bi"
     return f"R$ {br(v, casas)} mi"
 
@@ -245,13 +246,13 @@ def render(janela):
         fig = go.Figure()
         fig.add_bar(name="EBITDA reportado", x=anos_txt, y=[modelos[x]["ebitda"] / 1e3 for x in anos_graf],
                     marker_color="#6c8ebf", text=[br(modelos[x]["ebitda"] / 1e3, 0) for x in anos_graf], textposition="outside",
-                    hovertext=[f"<b>EBITDA reportado · {x}</b><br>{mi(modelos[x]['ebitda'])}" + c.dica("EBITDA") for x in anos_graf],
+                    hovertext=[f"<b>EBITDA reportado · {x}</b><br>{mi(modelos[x]['ebitda'], 0, so_mi=True)}" + c.dica("EBITDA") for x in anos_graf],
                     hoverinfo="text")
         fig.add_bar(name="EBITDA recorrente", x=anos_txt, y=[modelos[x]["ebitda_rec"] / 1e3 for x in anos_graf],
                     marker_color=COR_TOTAL, text=[br(modelos[x]["ebitda_rec"] / 1e3, 0) for x in anos_graf],
                     textposition="outside",
-                    hovertext=[f"<b>EBITDA recorrente · {x}</b><br>{mi(modelos[x]['ebitda_rec'])}<br>Ajustes: "
-                               f"{mi(modelos[x]['ajustes'])}" + c.dica("EBITDA recorrente") for x in anos_graf],
+                    hovertext=[f"<b>EBITDA recorrente · {x}</b><br>{mi(modelos[x]['ebitda_rec'], 0, so_mi=True)}<br>Ajustes: "
+                               f"{mi(modelos[x]['ajustes'], 0, so_mi=True)}" + c.dica("EBITDA recorrente") for x in anos_graf],
                     hoverinfo="text")
         fig.update_layout(barmode="group")
         c.layout_base(fig, "EBITDA reportado vs. recorrente (R$ milhões)", altura=460, y_titulo="R$ milhões")

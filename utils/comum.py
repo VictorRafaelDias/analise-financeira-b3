@@ -13,6 +13,7 @@ Cada padrão pedido pelo grupo tem uma função aqui, para que as quatro abas fi
 - bloco de diagnóstico e fonte ......... diagnostico(), fonte()           (Victor)
 """
 import html
+import re
 import textwrap
 from dataclasses import dataclass, field
 
@@ -240,10 +241,47 @@ GLOSSARIO = {
     "CAPEX": ("Investimento em equipamentos, sistemas e software.", {"victor"}),
     "FCL": ("Fluxo de caixa livre: FCO − CAPEX.", {"victor"}),
     "FCL depois dos juros": ("FCL − despesas de juros: o que sobra para o acionista.", {"victor"}),
-    "JCP": ("Juros sobre capital próprio: provento que a empresa abate do próprio imposto de renda.",
-            {"victor", "joao"}),
-    "Recompra": ("A empresa compra e cancela as próprias ações.", {"victor"}),
-    "Payout": ("(Dividendos + JCP + recompras) ÷ lucro.", {"victor"}),
+    "JCP": ("Juros sobre capital próprio: outra forma de pagar o acionista em dinheiro. A B3 desconta esse valor "
+            "do lucro tributável e paga menos imposto; quem recebe paga IR na fonte.", {"victor", "joao"}),
+    "Dividendos": ("Parte do lucro paga em dinheiro aos acionistas. Para quem recebe, é isento de imposto de renda.",
+                   {"victor"}),
+    "Proventos": ("Dinheiro pago ao acionista: dividendos + JCP.", {"victor"}),
+    "Recompra": ("A B3 usa o próprio caixa para comprar ações dela mesma na bolsa e depois cancelá-las. Com menos "
+                 "ações, cada uma fica com um pedaço maior do lucro: é outra forma de devolver dinheiro ao acionista.",
+                 {"victor"}),
+    "Payout": ("(Dividendos + JCP + recompras) ÷ lucro: quanto do lucro voltou ao acionista. Acima de 100%, a B3 "
+               "devolveu mais do que lucrou.", {"victor"}),
+    "Lucro do período (traço)": ("O traço marca o lucro do período (100%). Se a pilha passa do traço, a B3 devolveu "
+                                 "mais do que lucrou.", {"victor"}),
+    "Devolvido ao acionista": ("Proventos + recompras pagos em dinheiro no período.", {"victor"}),
+    "Disponibilidades": ("Dinheiro em conta e aplicações de resgate imediato.", {"victor"}),
+    "Aplicações financeiras": ("Dinheiro aplicado em títulos (CDB, títulos públicos, fundos). CP = vence em até 12 "
+                               "meses; LP = depois disso.", {"victor"}),
+    "Dívida de curto prazo": ("Parte da dívida que vence nos próximos 12 meses.", {"victor"}),
+    "Dívida de longo prazo": ("Parte da dívida que vence depois de 12 meses.", {"victor"}),
+    "Bond": ("Título de dívida vendido a investidores no exterior, em dólar.", {"victor"}),
+    "Empréstimos bancários": ("Dinheiro emprestado direto por bancos, com juros e prazo combinados em contrato.",
+                              {"victor"}),
+    "IR diferido": ("Imposto lançado agora, mas pago (ou abatido) no futuro: entra no lucro sem sair do caixa.",
+                    {"victor"}),
+    "Capital de giro": ("Variação de contas a receber e a pagar do dia a dia; mexe no caixa sem passar pelo lucro.",
+                        {"victor"}),
+    "IR e CS pagos": ("Imposto de renda e contribuição social pagos em dinheiro no período.", {"victor"}),
+    "Outros ajustes": ("Itens que mudam o lucro sem mexer no caixa (provisões, remuneração em ações etc.).",
+                       {"victor"}),
+    "Despesas de juros": ("Juros da dívida (debêntures, bond e empréstimos).", {"victor"}),
+    "Proventos em custódia": ("Dividendos de outras empresas que a B3 guarda por alguns dias antes de repassar aos "
+                              "investidores: passam pelo caixa, mas não são dela.", {"victor"}),
+    "Aquisições e outros investimentos": ("Compra de empresas e participações e outros investimentos fora do CAPEX.",
+                                          {"victor"}),
+    "Câmbio e outros": ("Diferença que fecha a conta: efeito do dólar sobre a dívida em moeda estrangeira e itens "
+                        "menores.", {"victor"}),
+    "Efeito EBITDA": ("Quanto a alavancagem mudou só porque o EBITDA mudou (com a dívida parada).", {"victor"}),
+    "Efeito dívida": ("Quanto a alavancagem mudou só porque a dívida mudou.", {"victor"}),
+    "Arrendamentos": ("Aluguéis de longo prazo (imóveis, equipamentos) que a contabilidade trata como dívida.",
+                      {"victor"}),
+    "Capacidade de pagamento": ("FCO de 12 meses ÷ dívida bruta: quanto da dívida o caixa da operação pagaria em "
+                                "um ano.", {"victor"}),
     "ROE": ("Lucro ÷ patrimônio líquido: retorno sobre o capital do acionista.", {"victor"}),
 }
 
@@ -497,6 +535,7 @@ def _card_alerta(x):
         f"<div class='radar-card' style='border-left:6px solid {cor}' title=\"{titulo}\">"
         f"<div class='rc-top'><span class='rc-nome'>{x['nome']}</span>"
         f"<span class='rc-badge' style='background:{cor}26;color:{cor}'>{x['status']}</span></div>"
+        + (f"<div class='rc-formula'>{x['formula']}</div>" if x.get("formula") else "") +
         f"<div class='rc-valor'>{x['valor']}</div>"
         f"<div class='rc-delta'>{x.get('delta') or '&nbsp;'}</div>"
         f"<div class='rc-desc'>{x.get('desc', '')}</div>"
@@ -554,9 +593,45 @@ def leitura(texto):
 # ======================================================================================
 # Oportunidades (coletadas pelas abas e consolidadas na Conclusão)
 # ======================================================================================
-def oportunidade(janela, aba, nivel, tema, diagnostico_, acao, evidencia=""):
+def oportunidade(janela, aba, nivel, tema, diagnostico_, acao, evidencia="", numero=None):
+    """numero: (valor, legenda) mostrado em destaque no card, ex.: ("124%", "payout LTM")."""
     janela.oportunidades.append(dict(aba=aba, nivel=nivel, tema=tema, diagnostico=diagnostico_, acao=acao,
-                                     evidencia=evidencia))
+                                     evidencia=evidencia, numero=numero))
+
+
+# Valores com unidade (R$ 2,6 bi · 124% · 1,98x · 4,0–4,5x · +11 p.p.) ficam em negrito nos cards
+_NUMERO = re.compile(r"(?:[~≈]\s?)?(?:R\$\s?)?[−+]?\d[\d.,]*(?:\s?[–-]\s?\d[\d.,]*)?"
+                     r"\s?(?:bi|mil|mi|%|x|p\.p\.)(?![A-Za-zÀ-ú])|R\$\s?\d[\d.,]*")
+
+
+def destacar_numeros(texto):
+    return _NUMERO.sub(lambda m: f"<b style='white-space:nowrap'>{m.group(0)}</b>", sem_escape(texto))
+
+
+def _vazio(v):
+    return v is None or (isinstance(v, float) and pd.isna(v)) or v == ""
+
+
+def cartao_oportunidade(o, mostrar_aba=False):
+    """Card de oportunidade: tema e nível, número-chave, o que os números mostram e o que fazer."""
+    nivel = o["nivel"]
+    cor = OPORT[nivel]
+    num = None if _vazio(o.get("numero")) else o["numero"]
+    ev = "" if (num or _vazio(o.get("evidencia"))) else f"<span class='op-aba'>{sem_escape(o['evidencia'])}</span>"
+    aba = f"<span class='op-aba'>{o['aba']}</span>" if mostrar_aba else ""
+    lado = (f"<div class='op-num' style='color:{cor}'>{sem_escape(num[0])}"
+            f"<div class='op-num-leg'>{sem_escape(num[1])}</div></div>") if num else ""
+    return (
+        f"<div class='op-card' style='border-left:6px solid {cor}'>"
+        f"<div class='op-top'><span class='op-tema'>{OPORT_EMOJI[nivel]} {sem_escape(o['tema'])}</span>{aba}{ev}"
+        f"<span class='op-badge' style='background:{cor}26;color:{cor}'>{OPORT_DESC[nivel]}</span></div>"
+        f"<div class='op-corpo'>{lado}<div class='op-texto'>"
+        f"<div class='op-diag'><span class='op-rot'>O que os números mostram</span>"
+        f"{destacar_numeros(o['diagnostico'])}</div>"
+        f"<div class='op-acao' style='background:{cor}1A;border-left:3px solid {cor}'>"
+        f"<span class='op-rot'>👉 O que fazer</span>{destacar_numeros(o['acao'])}</div>"
+        f"</div></div></div>"
+    )
 
 
 def bloco_oportunidades(janela, aba, titulo="💡 Diagnóstico de oportunidades desta aba"):
@@ -565,13 +640,8 @@ def bloco_oportunidades(janela, aba, titulo="💡 Diagnóstico de oportunidades 
         return
     st.markdown(f"### {titulo}")
     for nivel in ORDEM_NIVEL:
-        grupo = [o for o in ops if o["nivel"] == nivel]
-        for o in grupo:
-            ev = f" <span style='opacity:.7'>({o['evidencia']})</span>" if o["evidencia"] else ""
-            corpo = (f"<b>{OPORT_EMOJI[nivel]} {o['tema']}</b> · <i>{OPORT_DESC[nivel]}</i>{ev}<br>"
-                     f"{o['diagnostico']}<br><b>Ação:</b> {o['acao']}")
-            st.markdown(f"<div class='oport' style='border-left:5px solid {OPORT[nivel]}'>{sem_escape(corpo)}</div>",
-                        unsafe_allow_html=True)
+        for o in [o for o in ops if o["nivel"] == nivel]:
+            st.markdown(cartao_oportunidade(o), unsafe_allow_html=True)
 
 
 # ======================================================================================
@@ -699,6 +769,7 @@ div[data-testid="stAlert"] {{border-radius: 10px;}}
 .rc-top {{display:flex; justify-content:space-between; align-items:flex-start; gap:8px;}}
 .rc-nome {{font-weight:600; font-size:0.9rem; line-height:1.25;}}
 .rc-badge {{font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:999px; white-space:nowrap;}}
+.rc-formula {{font-size:0.74rem; opacity:0.65; margin-top:2px;}}
 .rc-valor {{font-size:1.6rem; font-weight:700; margin-top:6px;}}
 .rc-delta {{font-size:0.8rem; opacity:0.75;}}
 .rc-desc {{font-size:0.8rem; margin-top:6px; line-height:1.3;}}
@@ -707,6 +778,21 @@ div[data-testid="stAlert"] {{border-radius: 10px;}}
 .leitura {{font-size:0.95rem; margin:-4px 0 10px 0;}}
 .oport {{background:{c['fundo_card']}; border:1px solid {c['borda']}; border-radius:8px; padding:8px 12px;
     margin-bottom:8px; font-size:0.92rem;}}
+.op-card {{background:{c['fundo_card']}; border:1px solid {c['borda']}; border-radius:10px; padding:12px 16px;
+    margin-bottom:12px; box-shadow: 0 2px 8px {c['sombra']};}}
+.op-top {{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:8px;}}
+.op-tema {{font-weight:700; font-size:1.02rem;}}
+.op-aba {{font-size:0.8rem; opacity:0.7;}}
+.op-badge {{font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:999px; margin-left:auto;}}
+.op-corpo {{display:flex; gap:18px; align-items:flex-start;}}
+.op-num {{flex:0 0 150px; font-size:1.7rem; font-weight:800; line-height:1.1;}}
+.op-num-leg {{font-size:0.74rem; font-weight:500; opacity:0.8; margin-top:4px; line-height:1.25;}}
+.op-texto {{flex:1; min-width:0;}}
+.op-rot {{display:block; font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em;
+    opacity:0.65; margin-bottom:2px;}}
+.op-diag {{font-size:0.92rem; margin-bottom:8px;}}
+.op-acao {{font-size:0.95rem; padding:6px 10px; border-radius:6px;}}
+@media (max-width: 640px) {{ .op-corpo {{flex-direction:column; gap:6px;}} .op-num {{flex:none;}} }}
 </style>
 """
 
