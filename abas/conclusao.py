@@ -117,11 +117,7 @@ def render(janela):
             continue
         st.markdown(f"#### {c.OPORT_EMOJI[nivel]} {nivel} — {c.OPORT_DESC[nivel]} ({len(grupo)})")
         for _, o in grupo.iterrows():
-            ev = f" <span style='opacity:.7'>({o['evidencia']})</span>" if o["evidencia"] else ""
-            corpo = (f"<b>{o['tema']}</b> · <span style='opacity:.75'>{o['aba']}</span>{ev}<br>{o['diagnostico']}"
-                     f"<br><b>Ação:</b> {o['acao']}")
-            st.markdown(f"<div class='oport' style='border-left:5px solid {c.cor_oport(nivel)}'>"
-                        f"{c.sem_escape(corpo)}</div>", unsafe_allow_html=True)
+            st.markdown(c.cartao_oportunidade(o.to_dict(), mostrar_aba=True), unsafe_allow_html=True)
 
     # ---------------------------------------------------------------- Prescrição integrada
     c.cabecalho_secao("Prescrição integrada 2026–2027", abertura="As ações de prioridade alta, em ordem de execução.")
@@ -144,7 +140,9 @@ def render(janela):
                  "faixas da Moody's).")
 
     with st.expander("⬇️ Exportar oportunidades"):
+        ops = ops.assign(numero=[" · ".join(n) if isinstance(n, tuple) else "" for n in ops.get("numero", [None] * len(ops))])
         st.dataframe(ops.rename(columns={"aba": "Aba", "nivel": "Nível", "tema": "Tema", "diagnostico": "Diagnóstico",
-                                         "acao": "Ação", "evidencia": "Evidência"}), hide_index=True, width="stretch")
+                                         "acao": "Ação", "evidencia": "Evidência",
+                                         "numero": "Número-chave"}), hide_index=True, width="stretch")
         st.download_button("⬇️ Baixar CSV", ops.to_csv(index=False, sep=";").encode("utf-8-sig"),
                            "b3_oportunidades_consolidadas.csv", "text/csv", key="conc_csv")

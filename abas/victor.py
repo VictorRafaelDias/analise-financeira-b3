@@ -112,7 +112,7 @@ def render(janela):
              delta_color="inverse"),
         dict(rotulo="Folga (caixa − dívida)", valor=dinheiro(-r["divida_liquida"], unidade, md=False),
              delta=None if ra is None else dinheiro(d_folga, unidade, sinal=True, md=False)),
-        dict(rotulo="Dívida bruta / EBITDA LTM", valor=mult(r["divida_bruta_ebitda_ltm"]), termo="Alavancagem",
+        dict(rotulo="Alavancagem", valor=mult(r["divida_bruta_ebitda_ltm"]), termo="Alavancagem",
              delta=None if ra is None or pd.isna(ra["divida_bruta_ebitda_ltm"])
              else mult(dif("divida_bruta_ebitda_ltm"), sinal=True), delta_color="inverse"),
         dict(rotulo="Payout LTM", valor=pct(r["payout_ltm"]), termo="Payout",
@@ -148,35 +148,39 @@ def render(janela):
 
 
     radar = [
-        dict(nome="Dívida bruta ÷ EBITDA LTM", curto="a alavancagem", valor=mult(r["divida_bruta_ebitda_ltm"]),
+        dict(nome="Alavancagem", formula="Dívida bruta ÷ EBITDA recorrente LTM", curto="a alavancagem", valor=mult(r["divida_bruta_ebitda_ltm"]),
              delta=delta_txt("divida_bruta_ebitda_ltm", lambda v: mult(v, sinal=True)),
              status=status_alav(r["divida_bruta_ebitda_ltm"]),
              desc="Quantos anos de EBITDA pagariam toda a dívida.",
              fonte="Moody's: histórico 1,0–2,0x; rebaixamento se > 2,5x de forma sustentada"),
-        dict(nome="EBIT ÷ despesas financeiras LTM", curto="a cobertura de juros", valor=mult(r["cobertura_ebit_desp_fin_ltm"], 1),
+        dict(nome="Cobertura de juros", formula="EBIT ÷ despesas financeiras LTM", chave="cobertura",
+             curto="a cobertura de juros", valor=mult(r["cobertura_ebit_desp_fin_ltm"], 1),
              delta=delta_txt("cobertura_ebit_desp_fin_ltm", lambda v: mult(v, 1, sinal=True)),
              status=status_min(r["cobertura_ebit_desp_fin_ltm"], sd.COBERTURA_MIN),
              desc="Quantas vezes o resultado operacional cobre as despesas financeiras.",
              fonte="Moody's projeta 4,0–4,5x para 2025–26 (5,1x na métrica ajustada dela)"),
-        dict(nome="FCO ÷ dívida bruta LTM", curto="o FCO sobre a dívida", valor=pct(r["fco_sobre_divida_ltm"]),
+        dict(nome="Capacidade de pagamento", formula="FCO LTM ÷ dívida bruta", curto="a capacidade de pagamento", valor=pct(r["fco_sobre_divida_ltm"]),
              delta=delta_txt("fco_sobre_divida_ltm", lambda v: f"{'+' if v >= 0 else '-'}{br(abs(v) * 100, 0)} p.p."),
              status=status_min(r["fco_sobre_divida_ltm"], sd.FCO_DIVIDA_MIN),
              desc="Quanto da dívida o caixa da operação de 12 meses pagaria.",
              fonte="Moody's projeta 25–35% para 2025–26"),
-        dict(nome="Folga (caixa − dívida)", valor=dinheiro(-r["divida_liquida"], unidade, md=False),
+        dict(nome="Folga de caixa", formula="Caixa total − dívida bruta",
+             valor=dinheiro(-r["divida_liquida"], unidade, md=False),
              delta="" if ra is None else f"{dinheiro(d_folga, unidade, sinal=True, md=False)} vs {per_ant}",
              status="Informativo", desc="Quanto sobra de caixa depois de pagar toda a dívida.",
              fonte="Moody's: liquidez \"extremamente forte\""),
-        dict(nome="Dívida CP ÷ caixa total", valor=pct(r["divida_bruta_cp"] / r["caixa_total"]),
+        dict(nome="Pressão de curto prazo", formula="Dívida que vence em 12 meses ÷ caixa total",
+             valor=pct(r["divida_bruta_cp"] / r["caixa_total"]),
              delta="" if ra is None else
              f"{'+' if (r['divida_bruta_cp'] / r['caixa_total'] - ra['divida_bruta_cp'] / ra['caixa_total']) >= 0 else '-'}"
              f"{br(abs(r['divida_bruta_cp'] / r['caixa_total'] - ra['divida_bruta_cp'] / ra['caixa_total']) * 100, 0)} p.p. vs {per_ant}",
              status="Informativo", desc="Parte do caixa comprometida com dívida que vence em 12 meses.", fonte="—"),
-        dict(nome="Payout total LTM", valor=pct(r["payout_ltm"]),
+        dict(nome="Payout", formula="(Dividendos + JCP + recompras) ÷ lucro, LTM", valor=pct(r["payout_ltm"]),
              delta="" if d_payout is None else f"{'+' if d_payout >= 0 else '-'}{br(abs(d_payout) * 100, 0)} p.p. vs {per_ant}",
-             status="Informativo", desc="Dividendos + JCP + recompras declarados ÷ lucro de 12 meses.",
+             status="Informativo", desc="Quanto do lucro de 12 meses voltou ao acionista. Acima de 100%, devolveu mais do que lucrou.",
              fonte="Moody's: distribuição \"elevada\", mas compatível"),
-        dict(nome="Devolvido ÷ FCL pós-juros (2021–25)", valor=pct(devolvido_fcl),
+        dict(nome="Devolução x caixa livre", formula="Devolvido ÷ FCL depois dos juros, 2021–2025",
+             valor=pct(devolvido_fcl),
              delta="acumulado de 5 anos, valores pagos", status="Informativo",
              desc="Quanto foi devolvido ao acionista para cada R$ 1 de FCL depois dos juros.", fonte="—"),
     ]
@@ -187,7 +191,7 @@ def render(janela):
                      f"{'está confortável' if n_conf == 1 else 'estão confortáveis'}")
     if atencao:
         leitura_radar += " e " + "; ".join(f"**{x['curto']} ({x['valor']})** pede atenção" for x in atencao)
-        if any(x["nome"].startswith("EBIT") for x in atencao):
+        if any(x.get("chave") == "cobertura" for x in atencao):
             leitura_radar += ", abaixo da faixa de 4,0–4,5x que a Moody's projeta para a B3"
     for x in radar:
         x["regra"] = x.pop("fonte")
@@ -238,15 +242,33 @@ def render(janela):
                 f"⚠️ O caixa inclui {dinheiro(rr['garantias_recebidas'], 'R$ bi', 2)} de garantias de terceiros "
                 "(`garantias_recebidas`, BP linha 37), que também estão no passivo."
             )
-        st.markdown("**Composição da dívida no 2T26 (ITR 2T26, nota 9)**")
-        plot(sc.micro_bloco1_instrumentos())
+        st.markdown(f"**Dívida em {per}: quando vence**")
+        plot(sc.micro_bloco1_prazo(rr, unidade))
+        st.markdown(
+            f"Em {per}, **{dinheiro(rr['divida_bruta_cp'], unidade)}** "
+            f"({pct(rr['divida_bruta_cp'] / rr['divida_bruta'])} da dívida) vencem em até 12 meses e "
+            f"**{dinheiro(rr['divida_bruta_lp'], unidade)}** vencem depois."
+        )
+        ultimo = tri.iloc[-1]
+        no_ultimo = per == ultimo["periodo"] or (gran == "Anual" and rr["ano"] == ultimo["ano"])
         ins = sd.DIVIDA_INSTRUMENTOS
         part = ins.groupby("tipo")["saldo_mi"].sum() / ins["saldo_mi"].sum()
-        st.markdown(
+        texto_ins = (
             f"{pct(part['Debêntures'])} da dívida são debêntures (quase todas no CDI), {pct(part['Bond'])} é o bond "
             f"em dólar e {pct(part['Empréstimos'])} são empréstimos bancários em dólar. Total: "
-            f"R\\$ {br(tri.iloc[-1]['divida_bruta'] / 1e3, 1)} mi, igual à `divida_bruta` do 2T26."
+            f"R\\$ {br(ultimo['divida_bruta'] / 1e3, 1)} mi, igual à `divida_bruta` do {ultimo['trimestre']}."
         )
+        if no_ultimo:
+            st.markdown(f"**Composição da dívida no {ultimo['trimestre']}, por instrumento (ITR 2T26, nota 9)**")
+            plot(sc.micro_bloco1_instrumentos())
+            st.markdown(texto_ins)
+        else:
+            st.caption(f"A divisão por instrumento (debêntures, bond, empréstimos) só é publicada nas notas do ITR/DFP, "
+                       f"fora da planilha; a base tem o detalhe apenas do {ultimo['trimestre']}. Para {per}, o gráfico "
+                       f"acima usa a divisão por prazo do balanço oficial.")
+            with st.expander(f"Ver a composição por instrumento do {ultimo['trimestre']}"):
+                plot(sc.micro_bloco1_instrumentos())
+                st.markdown(texto_ins)
         with st.expander("Tabela de instrumentos"):
             t = ins[["instrumento", "taxa", "vencimento", "saldo_mi"]].rename(
                 columns={"instrumento": "Instrumento", "taxa": "Taxa", "vencimento": "Vencimento do principal",
@@ -536,34 +558,51 @@ def render(janela):
             "- R\\$ 2,6 bi de dívida vencem nos próximos 12 meses."
         )
     a5 = anual[(anual["ano"] >= 2021) & (anual["ano"] <= 2025)]
-    excesso = a5["retorno_acionista_caixa"].sum() - a5["fcl_pos_juros"].sum()
+    devolvido5 = a5["retorno_acionista_caixa"].sum()
+    excesso = devolvido5 - a5["fcl_pos_juros"].sum()
     ult = tri.iloc[-1]
-    cm.oportunidade(janela, ABA, "Alto", "Devolução acima do caixa gerado",
-                    f"De 2021 a 2025, a B3 devolveu R$ {br(a5['retorno_acionista_caixa'].sum() / 1e6, 1)} bi, "
-                    f"R$ {br(excesso / 1e6, 1)} bi a mais que o FCL depois dos juros; a folga caiu de R$ 10,8 bi para "
-                    f"R$ {br(-ult['divida_liquida'] / 1e6, 1)} bi.",
-                    "Regra de distribuição: proventos + recompras ≤ FCL depois dos juros no acumulado de vários anos "
-                    "(≈ R$ 4,6 bi/ano em 2021–2025, contra R$ 5,7 bi devolvidos).",
-                    f"payout LTM {pct(ult['payout_ltm'])}")
-    cm.oportunidade(janela, ABA, "Médio", "Cobertura de juros abaixo da faixa da Moody's",
-                    f"EBIT ÷ despesas financeiras de {mult(ult['cobertura_ebit_desp_fin_ltm'], 1)} nos 12 meses até o "
-                    f"{ult['trimestre']}, abaixo dos 4,0–4,5x projetados.",
-                    "Crescer o EBITDA: +10% leva a alavancagem a ~1,80x; cortar 10% de pessoal e TI libera ~R$ 0,22 bi.")
-    cm.oportunidade(janela, ABA, "Médio", "Vencimentos de curto prazo",
-                    f"R$ {br(ult['divida_bruta_cp'] / 1e6, 1)} bi vencem em 12 meses (era R$ 0,3 bi um ano antes).",
-                    "Pagar parte do vencimento sem rolar: quitar o curto prazo leva a alavancagem a ~1,63x (ganho de risco; "
-                    "a economia de juros é pequena).")
-    cm.oportunidade(janela, ABA, "Médio", "Recompras acima da sobra de caixa",
-                    "Em 2022 e 2024, as recompras pagas (R$ 3,7–3,8 bi) foram o maior pagamento ao acionista.",
-                    "Recomprar só com sobra de caixa, depois de juros e proventos.")
+    folga0 = -anual.iloc[0]["divida_liquida"]
+    rec = anual.set_index("ano")["recompra_caixa"]
+    cm.oportunidade(janela, ABA, "Alto", "Devolver só o que o caixa gera",
+                    f"De 2021 a 2025, a B3 devolveu R$ {br(devolvido5 / 1e6, 1)} bi aos acionistas: "
+                    f"R$ {br(excesso / 1e6, 1)} bi a mais do que sobrou de caixa depois dos juros. Por isso a folga caiu "
+                    f"de R$ {br(folga0 / 1e6, 1)} bi para R$ {br(-ult['divida_liquida'] / 1e6, 1)} bi.",
+                    f"Limitar dividendos + JCP + recompras ao FCL depois dos juros: cerca de "
+                    f"R$ {br(a5['fcl_pos_juros'].mean() / 1e6, 1)} bi por ano (média 2021–2025), e não os "
+                    f"R$ {br(devolvido5 / 5 / 1e6, 1)} bi por ano devolvidos.",
+                    f"payout LTM {pct(ult['payout_ltm'])}",
+                    numero=(pct(ult["payout_ltm"]), f"payout em 12 meses: devolveu R$ {br(ult['payout_ltm'], 2)} "
+                                                    f"para cada R$ 1 de lucro"))
+    cm.oportunidade(janela, ABA, "Médio", "Cobertura de juros abaixo do esperado",
+                    f"Nos 12 meses até o {ult['trimestre']}, o resultado operacional (EBIT) pagou as despesas "
+                    f"financeiras {mult(ult['cobertura_ebit_desp_fin_ltm'], 1)}; a Moody's espera 4,0–4,5x.",
+                    "Fazer o EBITDA crescer mais que a dívida: +10% de EBITDA leva a alavancagem a ~1,80x; cortar 10% "
+                    "de pessoal e TI libera ~R$ 0,22 bi.",
+                    numero=(mult(ult["cobertura_ebit_desp_fin_ltm"], 1), "cobertura de juros (Moody's: 4,0–4,5x)"))
+    cm.oportunidade(janela, ABA, "Médio", "Dívida que vence em 12 meses",
+                    f"R$ {br(ult['divida_bruta_cp'] / 1e6, 1)} bi vencem nos próximos 12 meses; um ano antes eram "
+                    f"R$ 0,3 bi.",
+                    "Pagar parte com o caixa em vez de rolar tudo: quitar o curto prazo leva a alavancagem de "
+                    f"{mult(ult['divida_bruta_ebitda_ltm'])} para ~1,63x. O ganho é de risco; a economia de juros é "
+                    "pequena, porque o caixa rende quase o que a dívida custa.",
+                    numero=(f"R$ {br(ult['divida_bruta_cp'] / 1e6, 1)} bi", f"vencem até 12 meses após o {ult['trimestre']}"))
+    cm.oportunidade(janela, ABA, "Médio", "Recompras maiores que a sobra de caixa",
+                    f"Em 2022 e 2024, a B3 pagou R$ {br(rec[2022] / 1e6, 1)} bi e R$ {br(rec[2024] / 1e6, 1)} bi em "
+                    "recompras, o maior pagamento ao acionista nesses anos.",
+                    "Recomprar ações só com o que sobrar depois de juros, dividendos e JCP.",
+                    numero=(f"R$ {br(rec[2024] / 1e6, 1)} bi", "em recompras pagas em 2024"))
     cm.oportunidade(janela, ABA, "Médio", "Transparência da divulgação",
-                    "O FCO inclui a variação de aplicações (linha 32) e o caixa inclui R$ 2,65 bi de garantias de terceiros.",
-                    "Divulgar também o FCO sem aplicações, o caixa próprio, juros separados do principal e a dívida por "
-                    "instrumento na planilha.")
+                    f"O FCO inclui a variação das aplicações financeiras (DFC linha 32) e o caixa inclui "
+                    f"R$ {br(ult['garantias_recebidas'] / 1e6, 2)} bi de garantias de terceiros.",
+                    "Publicar na planilha: FCO sem aplicações, caixa próprio (sem garantias), juros separados do "
+                    "principal e a dívida por instrumento.",
+                    numero=(f"R$ {br(ult['garantias_recebidas'] / 1e6, 2)} bi",
+                            f"de garantias de terceiros dentro do caixa ({ult['trimestre']})"))
     cm.oportunidade(janela, ABA, "Forte", "Caixa maior que a dívida",
                     f"Folga de R$ {br(-ult['divida_liquida'] / 1e6, 1)} bi e alavancagem de "
-                    f"{mult(ult['divida_bruta_ebitda_ltm'])} no {ult['trimestre']}, abaixo do gatilho de 2,5x.",
-                    "Manter a alavancagem abaixo do gatilho e a devolução dentro do caixa.")
+                    f"{mult(ult['divida_bruta_ebitda_ltm'])} no {ult['trimestre']}, abaixo do gatilho de 2,5x da Moody's.",
+                    "Manter a alavancagem abaixo de 2,5x e a devolução dentro do caixa gerado.",
+                    numero=(f"R$ {br(-ult['divida_liquida'] / 1e6, 1)} bi", f"de folga de caixa no {ult['trimestre']}"))
     cm.bloco_oportunidades(janela, ABA, titulo="💡 Oportunidades (prescrição 2026–2027)")
     st.markdown("#### 🔎 Pontos de melhoria na divulgação da B3")
     st.caption("Incoerências destacadas, sem corrigir dados.")

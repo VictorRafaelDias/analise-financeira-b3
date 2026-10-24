@@ -32,8 +32,19 @@ TERMO = {
     "Não recorrentes": "Ajustes não recorrentes", "EBITDA recorrente": "EBITDA recorrente",
     "Lucro líquido": "Lucro líquido", "Depreciação e amortização": "Depreciação e amortização",
     "FCO": "FCO", "CAPEX": "CAPEX", "FCL": "FCL", "FCL depois dos juros": "FCL depois dos juros",
-    "Recompras pagas": "Recompra", "Proventos pagos": "JCP", "Juros": "Resultado financeiro",
+    "Recompras pagas": "Recompra", "Proventos pagos": "Proventos", "Juros": "Despesas de juros",
+    "Disponibilidades": "Disponibilidades", "Aplicações CP": "Aplicações financeiras",
+    "Aplicações LP": "Aplicações financeiras", "Aplicações financeiras": "Aplicações financeiras",
+    "Dívida CP": "Dívida de curto prazo", "Dívida LP": "Dívida de longo prazo",
+    "Garantias recebidas": "Garantias de terceiros", "Proventos em custódia": "Proventos em custódia",
+    "IR diferido": "IR diferido", "Capital de giro": "Capital de giro", "IR e CS pagos": "IR e CS pagos",
+    "Outros ajustes": "Outros ajustes", "Despesas de juros": "Despesas de juros",
+    "Aquisições e outros invest.": "Aquisições e outros investimentos", "Câmbio e outros": "Câmbio e outros",
+    "Efeito EBITDA": "Efeito EBITDA", "Efeito dívida": "Efeito dívida", "Outras despesas": "Despesas operacionais",
 }
+# Termo do glossário de cada tipo de dívida (gráfico por instrumento)
+TERMO_TIPO = {"Debêntures": "Debêntures", "Bond": "Bond", "Empréstimos": "Empréstimos bancários",
+              "Outros": "Arrendamentos"}
 INCOERENCIA = dict(color="rgba(242,183,5,0.45)", pattern=dict(shape="/", fgcolor="#9A7400", solidity=0.35),
                    line=dict(color="#9A7400", width=1.5))
 
@@ -142,7 +153,8 @@ def _cascata(passos, unidade, destaque=(), inverter=False, height=460, dec=None,
             h += "<br><b>Incoerência destacada</b> (linha oficial, sem correção)"
         elif nv:
             h += f"<br>Oportunidade: {nv}"
-        hover.append(h + dica(TERMO.get(_chave(rot), _chave(rot))))
+        termo = "Folga (caixa − dívida)" if rot.startswith("Folga ") else TERMO.get(_chave(rot), _chave(rot))
+        hover.append(h + dica(termo))
 
     sobe, desce = (VERMELHO, VERDE) if inverter else (VERDE, VERMELHO)
     fig = go.Figure(
@@ -221,6 +233,25 @@ def micro_bloco1_cascata(r, unidade):
     return _cascata(passos, unidade)
 
 
+def micro_bloco1_prazo(r, unidade):
+    """Dívida do período escolhido dividida por prazo (balanço oficial)."""
+    div, suf, dec = escala(unidade)
+    total = r["divida_bruta"]
+    itens = [("Vence em até 12 meses (CP)", r["divida_bruta_cp"], AMARELO, "Dívida de curto prazo"),
+             ("Vence depois de 12 meses (LP)", r["divida_bruta_lp"], CINZA_ESCURO, "Dívida de longo prazo")]
+    fig = go.Figure()
+    for nome, v, cor, termo in itens:
+        fig.add_bar(y=[nome], x=[v / div], orientation="h", marker_color=cor, width=0.55,
+                    text=[f"R$ {br(v / div, dec)} {suf} · {br(v / total * 100, 0)}%"], textposition="outside",
+                    cliponaxis=False, textfont=dict(size=12),
+                    hovertemplate=f"<b>{nome}</b><br>R$ %{{x:,.{dec}f}} {suf}" + _dica_linha(termo) + "<extra></extra>")
+    _layout(fig, height=230, legenda=False)
+    fig.update_layout(hovermode="closest", margin=dict(l=10, r=10, t=20, b=10))
+    fig.update_xaxes(type="linear", title=f"R$ {suf}", range=[0, total / div * 1.3])
+    fig.update_yaxes(type="category", autorange="reversed")
+    return fig
+
+
 def micro_bloco1_instrumentos():
     df = DIVIDA_INSTRUMENTOS.sort_values("saldo_mi")
     cores = {"Debêntures": AZUL, "Bond": ROXO, "Empréstimos": VERDE, "Outros": CINZA}
@@ -234,7 +265,8 @@ def micro_bloco1_instrumentos():
             textposition="outside",
             textfont=dict(size=11),
             cliponaxis=False,
-            hovertemplate="%{y}<br>R$ %{x:,.1f} mi<extra></extra>",
+            customdata=[_dica_linha(TERMO_TIPO[t]) for t in df["tipo"]],
+            hovertemplate="<b>%{y}</b><br>R$ %{x:,.1f} mi%{customdata}<extra></extra>",
         )
     )
     _layout(fig, height=440, legenda=False)
@@ -372,16 +404,20 @@ def macro_bloco4(df, unidade, regime):
                   ("recompras_dist", "Recompras", ROXO)]
     else:
         partes = [("proventos_pagos_caixa", "Dividendos + JCP pagos", AZUL), ("recompra_caixa", "Recompras pagas", ROXO)]
+    termos = {"Dividendos": "Dividendos", "JCP": "JCP", "Recompras": "Recompra", "Dividendos + JCP pagos": "Proventos",
+              "Recompras pagas": "Recompra"}
     for c, nome, cor in partes:
         fig.add_bar(x=df["periodo"], y=df[c] / div, name=nome, marker_color=cor, marker_opacity=op,
-                    hovertemplate="%{y:,.1f}")
+                    hovertemplate=f"%{{y:,.{dec}f}} {suf}" + _dica_linha(termos[nome]))
     total = sum(df[c] for c, _, _ in partes)
     lucro = df["lucro_liquido_acionistas"]
     n = len(df)
     fig.add_scatter(x=df["periodo"], y=lucro / div, name="Lucro líquido (100%)", mode="markers",
                     marker=dict(symbol="line-ew", size=max(14, int(420 / max(n, 1))),
                                 line=dict(width=3, color=CINZA_ESCURO)),
-                    hovertemplate="%{y:,.1f}")
+                    customdata=[f"{br(v * 100, 0)}%" for v in total / lucro],
+                    hovertemplate=f"%{{y:,.{dec}f}} {suf} · payout %{{customdata}}"
+                                  + _dica_linha("Lucro do período (traço)"))
     fig.update_layout(barmode="stack", bargap=0.3)
     _rotular_barras(fig, dec, "inside")
     _layout(fig, y_title=f"R$ {suf}")
@@ -426,10 +462,11 @@ def micro_bloco4_acumulado(anual, unidade, anos=(2021, 2025)):
     x = df["periodo"]
     fig = go.Figure()
     fig.add_scatter(x=x, y=a, name="FCL depois dos juros (acumulado)", mode="lines+markers",
-                    line=dict(color=CINZA, width=3), hovertemplate="%{y:,.1f}")
+                    line=dict(color=CINZA, width=3),
+                    hovertemplate=f"%{{y:,.{dec}f}} {suf}" + _dica_linha("FCL depois dos juros"))
     fig.add_scatter(x=x, y=b, name="Devolvido ao acionista, pago (acumulado)", mode="lines+markers",
                     line=dict(color=AZUL, width=3), fill="tonexty", fillcolor="rgba(214,69,69,0.10)",
-                    hovertemplate="%{y:,.1f}")
+                    hovertemplate=f"%{{y:,.{dec}f}} {suf}" + _dica_linha("Devolvido ao acionista"))
     # valores em todos os pontos: padrão aplicado em mostrar_grafico (utils/comum.py)
     _layout(fig, height=400, y_title=f"R$ {suf}")
     fig.update_yaxes(rangemode="tozero")
