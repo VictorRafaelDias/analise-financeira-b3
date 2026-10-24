@@ -69,6 +69,26 @@ def _dica_linha(termo):
     return dica(termo, largura=70).replace("{", "").replace("}", "")
 
 
+def _rotular_barras(fig, dec, posicao):
+    """Valor escrito em cada barra (padrão desta aba). posicao: 'outside', 'inside_end' ou 'inside'."""
+    for t in fig.data:
+        if t.type != "bar":
+            continue
+        t.texttemplate = f"%{{y:,.{dec}f}}"
+        if posicao == "outside":
+            t.textposition = "outside"
+            t.cliponaxis = False
+        else:
+            t.textposition = "inside"
+            t.insidetextanchor = "end" if posicao == "inside_end" else "middle"
+        muitos = t.x is not None and len(t.x) > 12  # trimestral: texto vertical e menor
+        t.textfont = dict(size=8 if muitos else 11)
+        if muitos:
+            t.textangle = -90
+    fig.update_layout(uniformtext=dict(minsize=7, mode="hide"))
+    return fig
+
+
 def _opac(df):
     """2026 (YTD) com opacidade 0,5."""
     return [0.5 if p else 1.0 for p in df["parcial"]]
@@ -182,7 +202,10 @@ def macro_bloco1(df, unidade):
                     textfont=dict(color=AZUL, size=13),
                     hovertemplate="%{y:,.1f}" + _dica_linha("Folga (caixa − dívida)"))
     fig.update_layout(barmode="group", bargap=0.25)
-    return _layout(fig, y_title=f"R$ {suf}")
+    _rotular_barras(fig, dec, "outside")
+    _layout(fig, y_title=f"R$ {suf}")
+    fig.update_yaxes(range=[0, df["caixa_total"].max() / div * 1.15])
+    return fig
 
 
 def micro_bloco1_cascata(r, unidade):
@@ -300,6 +323,7 @@ def macro_bloco3(df, unidade, destacar):
     fig.add_bar(x=df["periodo"], y=df["fcl"] / div, name="FCL", marker_color=AZUL_CLARO,
                 marker_opacity=op, hovertemplate="%{y:,.1f}" + _dica_linha("FCL"))
     fig.update_layout(barmode="group", bargap=0.2)
+    _rotular_barras(fig, dec, "inside_end")
     _layout(fig, height=470, y_title=f"R$ {suf}")
 
     topo = df[["lucro_liquido_acionistas", "fco", "fcl"]].max(axis=1) / div
@@ -359,6 +383,7 @@ def macro_bloco4(df, unidade, regime):
                                 line=dict(width=3, color=CINZA_ESCURO)),
                     hovertemplate="%{y:,.1f}")
     fig.update_layout(barmode="stack", bargap=0.3)
+    _rotular_barras(fig, dec, "inside")
     _layout(fig, y_title=f"R$ {suf}")
     payout = total / lucro
     topo = np.maximum(total, lucro) / div

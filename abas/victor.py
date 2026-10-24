@@ -12,7 +12,7 @@ from utils import solidez_charts as sc
 from utils import solidez_data as sd
 from utils.solidez_data import br, dinheiro, mult, pct
 
-ABA = "Victor · Solidez Financeira"
+ABA = "Solidez Financeira"
 STATUS_COR = cm.STATUS_COR
 
 
@@ -60,7 +60,7 @@ def render(janela):
     erros = sd.validar(tri, anual)
 
     st.markdown("## 🏦 Solidez Financeira, Endividamento e Geração de Valor")
-    st.caption("Responsável: Victor · A B3 é financeiramente sólida, e o dinheiro que ela gera volta ao acionista de forma "
+    st.caption("A B3 é financeiramente sólida, e o dinheiro que ela gera volta ao acionista de forma "
                "sustentável? Dados oficiais da B3 até o 2T26 (base em R\\$ mil).")
     if erros:
         st.error("Falha nos testes de validação da base:\n\n" + "\n".join(f"- {e}" for e in erros))
@@ -100,7 +100,8 @@ def render(janela):
 
 
     # Indicadores-chave (padrão comum)
-    st.markdown(f"#### Indicadores-chave · {per_ref}" + (f" (delta contra {per_ant})" if per_ant else ""))
+    st.markdown("#### Indicadores-chave e painel de alertas")
+    st.caption(f"Números do {per_ref}" + (f"; variação contra o {per_ant}." if per_ant else "."))
     d_folga = None if ra is None else -(r["divida_liquida"] - ra["divida_liquida"])
     d_payout = None if ra is None or pd.isna(ra["payout_ltm"]) else r["payout_ltm"] - ra["payout_ltm"]
     cm.kpis([

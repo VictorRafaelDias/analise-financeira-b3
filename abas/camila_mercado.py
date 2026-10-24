@@ -186,7 +186,7 @@ def render(janela, aba, emissoes):
         "agronegócio, ligado diretamente à LCA e ao crédito rural.",
         "**Por que importa para a B3:** bancos emitem a maior parte do estoque de renda fixa bancária registrado na B3 "
         "(CDB, LCI, LCA e LF somavam R$ 4,9 tri em dez/2025) e suas ações estão entre as mais negociadas, o que "
-        "alimenta as receitas de renda fixa e de renda variável da B3 (aba do Enzo).",
+        "alimenta as receitas de renda fixa e de renda variável da B3 (aba de Receita & Diversificação).",
     ])
     c.fonte([("Valor de mercado dos bancos (23/06/2026)", f"[Investidor10]({URL_BANCOS})", "R$ bi"),
              ("Variação de valor em 2025", f"[Monitor do Mercado / Elos Ayta]({URL_BANCOS_2025})", "R$ bi"),

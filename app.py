@@ -116,19 +116,19 @@ with st.expander("ℹ️ Como ler este painel"):
         "oportunidades de todas.\n"
         "- **Mesma estrutura em todas:** glossário → indicadores-chave → painel de alertas → seções com gráfico, "
         "leitura, diagnóstico e fonte → oportunidades da aba.\n"
-        "- **Cores de oportunidade** (padrão do João): 🟥 alto potencial de melhoria · 🟨 médio · ⬜ baixo · "
+        "- **Cores de oportunidade:** 🟥 alto potencial de melhoria · 🟨 médio · ⬜ baixo · "
         "🟦 efeito contábil · 🟩 ponto forte.\n"
-        "- **Janela de período** (padrão do Enzo): definida na barra lateral e aplicada a todas as abas.\n"
+        "- **Janela de período:** definida na barra lateral e aplicada a todas as abas.\n"
         "- **Nenhum valor da B3 foi alterado:** só somas, diferenças e razões sobre as linhas oficiais. Incoerências "
         "aparecem destacadas, não corrigidas."
     ))
 
 abas = st.tabs([
     "🏛️ Visão geral",
-    "📈 Desenvolvimento de Mercado · Camila",
-    "💰 Receita & Diversificação · Enzo",
-    "⚙️ Eficiência & Lucratividade · João",
-    "🏦 Solidez Financeira · Victor",
+    "📈 Desenvolvimento de Mercado",
+    "💰 Receita & Diversificação",
+    "⚙️ Eficiência & Lucratividade",
+    "🏦 Solidez Financeira",
     "🎯 Conclusão",
 ])
 with abas[0]:

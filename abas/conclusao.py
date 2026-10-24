@@ -8,8 +8,7 @@ from utils import dre
 from utils import solidez_data as sd
 from utils.comum import br, pct
 
-ABAS = ["Camila · Desenvolvimento de Mercado", "Enzo · Receita & Diversificação",
-        "João · Eficiência & Lucratividade", "Victor · Solidez Financeira"]
+ABAS = ["Desenvolvimento de Mercado", "Receita & Diversificação", "Eficiência & Lucratividade", "Solidez Financeira"]
 NIVEIS_OP = ["Alto", "Médio", "Baixo", "Forte"]
 
 
@@ -63,21 +62,21 @@ def render(janela):
                       "A B3 diversificou a receita e segue sólida, mas está devolvendo mais caixa do que gera e "
                       "perdendo margem; a prioridade é eficiência e disciplina de capital")
     c.leitura(
-        f"<b>Mercado (Camila):</b> a base de investidores foi de {br(n['inv_ini'], 1)} para {br(n['inv_fim'], 1)} milhões "
+        f"<b>Mercado:</b> a base de investidores foi de {br(n['inv_ini'], 1)} para {br(n['inv_fim'], 1)} milhões "
         f"({n['ini']}–{n['fim']}), mas cresce devagar desde 2022.<br>"
-        f"<b>Receita (Enzo):</b> a receita bruta variou {pct(n['rb_var'], 1, sinal=True)} e a Renda Variável caiu de "
+        f"<b>Receita:</b> a receita bruta variou {pct(n['rb_var'], 1, sinal=True)} e a Renda Variável caiu de "
         f"{pct(n['rv_peso_ini'], 1)} para {pct(n['rv_peso_fim'], 1)} da receita: o modelo ficou menos dependente do "
         "volume de ações.<br>"
-        f"<b>Eficiência (João):</b> a margem EBITDA recorrente foi de {pct(n['mg_ini'], 1)} para {pct(n['mg_fim'], 1)}: "
+        f"<b>Eficiência:</b> a margem EBITDA recorrente foi de {pct(n['mg_ini'], 1)} para {pct(n['mg_fim'], 1)}: "
         "os custos (pessoal e TI) cresceram mais que a receita.<br>"
-        f"<b>Solidez (Victor):</b> no {n['per']}, alavancagem de {br(n['alav'], 2)}x (abaixo do gatilho de 2,5x) e folga "
+        f"<b>Solidez:</b> no {n['per']}, alavancagem de {br(n['alav'], 2)}x (abaixo do gatilho de 2,5x) e folga "
         f"de R$ {br(n['folga'] / 1e6, 1)} bi, mas payout de {pct(n['payout'], 0)} e cobertura de juros de "
         f"{br(n['cobertura'], 1)}x, abaixo da faixa da Moody's.")
     c.diagnostico([
-        "**Mesma causa em duas abas:** a base de investidores estagnada (Camila) e a receita de Renda Variável em queda "
-        "(Enzo) refletem o mercado de ações mais fraco; a diversificação compensou na receita, não no volume.",
-        "**Efeito encadeado:** a margem menor (João) reduz o EBITDA que paga os juros, e por isso a cobertura de juros "
-        "ficou abaixo da faixa da Moody's (Victor).",
+        "**Mesma causa em duas abas:** a base de investidores estagnada (Mercado) e a receita de Renda Variável em queda "
+        "(Receita) refletem o mercado de ações mais fraco; a diversificação compensou na receita, não no volume.",
+        "**Efeito encadeado:** a margem menor (Eficiência) reduz o EBITDA que paga os juros, e por isso a cobertura de juros "
+        "ficou abaixo da faixa da Moody's (Solidez).",
         "**Ponto de equilíbrio:** a B3 tem caixa maior que a dívida, mas a devolução acima do FCL depois dos juros está "
         "consumindo essa folga.",
     ], titulo="🔍 Diagnóstico integrado")
@@ -127,22 +126,22 @@ def render(janela):
     # ---------------------------------------------------------------- Prescrição integrada
     c.cabecalho_secao("Prescrição integrada 2026–2027", abertura="As ações de prioridade alta, em ordem de execução.")
     st.markdown(c.md(
-        "1. **Eficiência primeiro (João):** renegociar TI e serviços de terceiros e conter pessoal abaixo do crescimento "
-        "da receita. Recupera margem e melhora a cobertura de juros (Victor).\n"
-        "2. **Disciplina de capital (Victor):** devolver ao acionista no máximo o FCL depois dos juros, no acumulado de "
+        "1. **Eficiência primeiro:** renegociar TI e serviços de terceiros e conter pessoal abaixo do crescimento "
+        "da receita. Recupera margem e melhora a cobertura de juros.\n"
+        "2. **Disciplina de capital:** devolver ao acionista no máximo o FCL depois dos juros, no acumulado de "
         "vários anos, e recomprar só com sobra de caixa. Preserva a folga.\n"
-        "3. **Proteger a receita do ciclo de ações (Enzo):** seguir crescendo em Renda Fixa e Crédito e Dados/Tecnologia, "
+        "3. **Proteger a receita do ciclo de ações:** seguir crescendo em Renda Fixa e Crédito e Dados/Tecnologia, "
         "com atenção à margem dessas linhas, e estimular volume em Renda Variável.\n"
-        "4. **Ampliar o mercado (Camila):** retomar a entrada de investidores pessoa física e destravar instrumentos em "
+        "4. **Ampliar o mercado:** retomar a entrada de investidores pessoa física e destravar instrumentos em "
         "queda (CRI), reforçando o papel da B3 no financiamento das empresas (ODS 8 e 9).\n"
-        "5. **Transparência (Victor e Camila):** divulgar FCO sem aplicações, caixa próprio, dívida por instrumento e "
+        "5. **Transparência:** divulgar FCO sem aplicações, caixa próprio, dívida por instrumento e "
         "séries de emissões consistentes."
     ))
-    c.fonte([("Oportunidades", "Abas da Camila, do Enzo, do João e do Victor", "Registradas por cada aba na mesma janela"),
-             ("Números da leitura integrada", "DRE IS (New Seg), base de solidez do Victor e dados da Camila",
+    c.fonte([("Oportunidades", "As quatro abas de análise", "Registradas por cada aba na mesma janela"),
+             ("Números da leitura integrada", "DRE IS (New Seg), base de solidez e dados de mercado",
               "Recalculados para a janela escolhida")],
-            nota="Os níveis de prioridade seguem as regras de cada aba (variação no tempo, critério de custo do João e "
-                 "faixas da Moody's no Victor).")
+            nota="Os níveis de prioridade seguem as regras de cada aba (variação no tempo, critério de custo e "
+                 "faixas da Moody's).")
 
     with st.expander("⬇️ Exportar oportunidades"):
         st.dataframe(ops.rename(columns={"aba": "Aba", "nivel": "Nível", "tema": "Tema", "diagnostico": "Diagnóstico",

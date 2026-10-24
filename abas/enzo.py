@@ -11,7 +11,7 @@ from utils import comum as c
 from utils import dre
 from utils.comum import br, pct
 
-ABA = "Enzo · Receita & Diversificação"
+ABA = "Receita & Diversificação"
 
 CORES_SEGMENTOS = {
     "Mercados": "#1f77b4",
@@ -121,7 +121,7 @@ def construir_sankey(valores, periodos, titulo):
 
 def render(janela):
     st.markdown("## 💰 Receita, Diversificação & Apetite por Produtos")
-    st.caption("Responsável: Enzo · Como a B3 gera receita e como o modelo se protege da volatilidade do mercado de "
+    st.caption("Como a B3 gera receita e como o modelo se protege da volatilidade do mercado de "
                "ações.")
     st.markdown("<div class='tese'>Tese: a queda da receita de Renda Variável foi compensada por Derivativos, Renda "
                 "Fixa e Crédito e Dados/Tecnologia — a receita total cresceu mesmo com a perda de peso das ações."
@@ -232,7 +232,7 @@ def render(janela):
         fig_sk = construir_sankey(a.rename(index=str), [str(x) for x in anos],
                                   f"B3 - Composição da Receita Total ({ini}-{fim})")
     c.mostrar_grafico(fig_sk, key="enz_sankey")
-    st.caption("Sankey do Enzo. Cada cor é um componente da receita (legenda acima). Em \"Todos os anos\" só o maior "
+    st.caption("Cada cor é um componente da receita (legenda acima). Em \"Todos os anos\" só o maior "
                "componente (Mercados) tem rótulo; escolha um ano ou trimestre para ver todos os valores, ou passe o "
                "mouse sobre as faixas.")
 
@@ -389,7 +389,7 @@ def render(janela):
                        + c.dica("Deduções da receita")),
             dict(rotulo="Despesas operacionais", valor=r["despesas"], tipo="passo", cor=c.cor_oport("Médio"),
                  hover=f"<b>Despesas (com D&A)</b><br>{pct(-r['despesas'] / r['receita_total'], 1)} da bruta"
-                       "<br>Oportunidade: Médio (detalhe na aba do João)" + c.dica("Despesas operacionais")),
+                       "<br>Oportunidade: Médio (detalhe na aba de Eficiência)" + c.dica("Despesas operacionais")),
             dict(rotulo="Resultado financeiro e outros", valor=outros, tipo="passo",
                  cor=c.cor_oport("Forte" if outros >= 0 else "Médio"),
                  hover=f"<b>Resultado financeiro e outros</b><br>{c.bi(outros, md=False)}" + c.dica("Resultado financeiro")),

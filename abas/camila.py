@@ -10,7 +10,7 @@ from abas import camila_mercado
 from utils import comum as c
 from utils.comum import br, pct
 
-ABA = "Camila · Desenvolvimento de Mercado"
+ABA = "Desenvolvimento de Mercado"
 
 # Investidores pessoa física em renda variável (milhões de CPFs, fim de ano), custódia (R$ bi, fim de ano)
 # e emissões públicas de dívida corporativa (R$ bi no ano). Emissões de 2020–2022 ficam vazias para não
@@ -63,7 +63,7 @@ def _fig_serie(df, col, nome, termo, tipo, unidade_txt, fmt):
 
 def render(janela):
     st.markdown("## 📊 Desenvolvimento de Mercado, Impacto Econômico & ODS")
-    st.caption("Responsável: Camila · Como a base de investidores, a custódia e as emissões de dívida evoluíram, e o "
+    st.caption("Como a base de investidores, a custódia e as emissões de dívida evoluíram, e o "
                "que isso diz sobre o financiamento das empresas e os ODS.")
     st.info("Investidores e custódia são **posições no fim de cada ano** (saldos). Emissões são o **volume emitido "
             "ao longo do ano** (fluxo). Por isso, são indicadores diferentes e não se somam.")
@@ -162,7 +162,7 @@ def render(janela):
     ])
     c.fonte([("Investidores PF em renda variável", "B3 — indicadores de pessoas físicas",
               "Posição no encerramento de cada ano, em milhões de CPFs")],
-            nota="Valores digitados no Streamlit original da Camila; conferir com a publicação da B3.")
+            nota="Valores digitados a partir da publicação da B3; conferir com a fonte.")
 
     # ---------------------------------------------------------------- 2. Custódia
     c.cabecalho_secao("🏛️ Evolução do valor em custódia",
@@ -185,7 +185,7 @@ def render(janela):
     ])
     c.fonte([("Valor em custódia de pessoas físicas", "B3 — indicadores de pessoas físicas",
               "Posição no encerramento de cada ano, R$ bilhões")],
-            nota="Valores digitados no Streamlit original da Camila.")
+            nota="Valores digitados a partir da publicação da B3.")
 
     # ---------------------------------------------------------------- 3. Emissões
     c.cabecalho_secao("🏢 Emissões de dívida corporativa",
@@ -209,7 +209,7 @@ def render(janela):
         "A série só vai de 2023 a 2025: 2020–2022 ficaram fora para não misturar definições diferentes.",
     ])
     c.fonte([("Emissões públicas de dívida corporativa", "B3 — boletim de emissões", "Volume anual, R$ bilhões")],
-            nota="Valores digitados no Streamlit original da Camila.")
+            nota="Valores digitados a partir da publicação da B3.")
 
     # ---------------------------------------------------------------- 4. Composição
     c.cabecalho_secao("📑 Composição por instrumento financeiro",
@@ -248,7 +248,7 @@ def render(janela):
         "(R$ 647,5 bi). Vale conferir a série de 2024 na publicação da B3.",
     ])
     c.fonte([("Emissões por instrumento", "B3 — boletim de emissões", "2024 e 2025, R$ bilhões")],
-            nota="A Camila registrou que os valores por categoria podem não totalizar o total anual por "
+            nota="Os valores por categoria podem não totalizar o total anual por "
                  "arredondamentos ou diferenças de apresentação.")
 
     # ---------------------------------------------------------------- IPOs, crédito imobiliário/agro e bancos
@@ -265,7 +265,7 @@ def render(janela):
 
     # ---------------------------------------------------------------- 6. Impacto e ODS
     c.cabecalho_secao("🌍 Impacto econômico e relação com os ODS")
-    o1, o2, o3 = st.columns(3)
+    o1, o2 = st.columns(2)
     with o1:
         st.markdown("#### 📈 ODS 8")
         st.markdown("**Trabalho decente e crescimento econômico.** O mercado de capitais oferece às empresas "
@@ -276,15 +276,11 @@ def render(janela):
         st.markdown("**Indústria, inovação e infraestrutura.** Os recursos captados podem financiar projetos, "
                     "infraestrutura e inovação. Para comprovar resultados, é preciso dado sobre o destino dos "
                     "recursos.")
-    with o3:
-        st.markdown("#### 🌱 ASG")
-        st.markdown("**Meio ambiente** (índice ICO2 B3, gestão de emissões), **responsabilidade social** "
-                    "(B3 Social, educação) e **governança** (transparência e divulgação ASG).")
     c.diagnostico([
         "**ODS 8:** sem IPOs desde 2021, o financiamento das empresas passou a vir de dívida (debêntures, notas "
         "comerciais) e de títulos bancários; a retomada de IPOs ampliaria o capital de longo prazo para crescer e "
         "gerar emprego.",
-        "**ODS 9 e 11:** LCI e CRI financiam moradia e construção; LCA e CRA financiam a produção agrícola. A B3 é a "
+        "**ODS 9:** LCI e CRI financiam moradia e construção; LCA e CRA financiam a produção agrícola. A B3 é a "
         "infraestrutura onde esses recursos são registrados.",
         "**Bancos:** os grandes bancos listados (Itaú, BTG, Bradesco, BB, Santander) são o canal pelo qual a poupança "
         "das famílias vira crédito; seus resultados acompanham juros e inadimplência do país.",
