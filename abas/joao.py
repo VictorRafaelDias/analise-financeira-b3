@@ -12,7 +12,7 @@ from utils import comum as c
 from utils import dre
 from utils.comum import br, pct
 
-ABA = "João · Eficiência & Lucratividade"
+ABA = "Eficiência & Lucratividade"
 COR_TOTAL, COR_QUEDA, COR_GANHO = "#1f77b4", "#d62728", "#2ca02c"
 NOMES_DRILL = {"ded": "Deduções e impostos", "desp": "Despesas operacionais", "bx": "D&A, financeiro e IR"}
 
@@ -59,12 +59,12 @@ def modelo(r):
 
 def render(janela):
     st.markdown("## ⚙️ Eficiência Operacional, Custos e Lucratividade")
-    st.caption("Responsável: João · Auditoria de rentabilidade: da receita ao lucro, onde estão os custos e quais "
+    st.caption("Auditoria de rentabilidade: da receita ao lucro, onde estão os custos e quais "
                "têm potencial de melhoria. Clique nas barras marcadas com ▸ para explorar os detalhes.")
     c.glossario("joao")
     c.aviso_parcial(janela)
 
-    valores, _, completa = dre.carregar_dre()
+    valores, _, _ = dre.carregar_dre()
     anos = janela.anos_fechados
     if not anos:
         st.warning("A janela escolhida não tem ano fechado (2020–2025).")
@@ -147,7 +147,7 @@ def render(janela):
              regra="informativo"),
     ]
     c.painel_alertas(alertas, leitura=c.leitura_alertas(alertas[:4], rot), por_linha=3,
-                     rodape="Regras do João (despesas x receita, alavancagem) e do grupo; não são metas oficiais da B3.")
+                     rodape="Regras definidas pelo grupo para leitura rápida; não são metas oficiais da B3.")
 
     # ---------------------------------------------------------------- Ponte de resultado
     c.cabecalho_secao(f"🌉 Ponte de resultado — {rot}",
@@ -230,7 +230,7 @@ def render(janela):
              ("EBITDA e EBITDA recorrente", "Planilha B3 · IS (New Seg)", "Linhas 66 e 79 (ajustes 67–78)"),
              ("Impairment, equivalência, financeiro", "Planilha B3 · IS (New Seg)", "Linhas 41–45"),
              ("IR (corrente e diferido), lucro", "Planilha B3 · IS (New Seg)", "Linhas 51–53 e 56; recorrente 121")],
-            nota="O potencial de oportunidade (Alto/Médio/Baixo/Nulo) é o critério do João aplicado às linhas reais. "
+            nota="O potencial de oportunidade (Alto/Médio/Baixo/Nulo) é o critério da aba aplicado às linhas reais. "
                  "Validação ao carregar: as linhas 27–38 somam as despesas e a ponte fecha com o lucro em todos os anos.")
 
     # ---------------------------------------------------------------- Análises complementares
@@ -314,13 +314,15 @@ def render(janela):
         fig.add_bar(x=[n for n, _, _ in ordenado], y=[v / 1e3 for _, v, _ in ordenado], name="Valor (R$ mi)",
                     marker_color=[c.cor_oport(p) for _, _, p in ordenado], text=[br(v / 1e3, 0) for _, v, _ in ordenado],
                     textposition="outside",
-                    hovertext=[f"<b>{n}</b><br>{mi(v)} · potencial {p}" + c.dica(n) for n, v, p in ordenado],
+                    hovertext=[f"<b>{n}</b><br>R$ {br(v / 1e3, 0)} mi · potencial {p}" + c.dica(n)
+                               for n, v, p in ordenado],
                     hoverinfo="text")
         fig.add_scatter(x=[n for n, _, _ in ordenado], y=acum, name="% acumulado", yaxis="y2", mode="lines+markers",
                         line=dict(color="#333", width=2), hovertemplate="%{y:.1f}% acumulado<extra></extra>")
         c.layout_base(fig, f"Pareto de custos — {rot}: poucos itens concentram a maior parte do gasto", altura=520,
                       y_titulo="R$ milhões")
-        fig.update_layout(yaxis2=dict(title="% acumulado", overlaying="y", side="right", range=[0, 105], ticksuffix="%"))
+        fig.update_layout(yaxis2=dict(title="% acumulado", overlaying="y", side="right", range=[0, 105], ticksuffix="%",
+                                      dtick=20, showgrid=False))
         c.mostrar_grafico(fig, key="joao_pareto")
         n80 = next(i for i, x in enumerate(acum) if x >= 80) + 1
         c.leitura(f"{n80} de {len(ordenado)} itens concentram 80% do custo: "
@@ -373,34 +375,6 @@ def render(janela):
         "A margem EBITDA recorrente caiu de 76% (2020) para 69% (2025): a receita cresceu menos que os custos.",
     ])
     c.fonte([("EBITDA, margens, custos", "Planilha B3 · IS (New Seg)", "Linhas 25–39, 56, 66 e 79")])
-
-    # ---------------------------------------------------------------- DRE gerencial
-    c.cabecalho_secao("📋 DRE gerencial completa — B3 (IS New Seg)")
-    f1, f2, f3 = st.columns(3)
-    with f1:
-        visao = c.blocos("Colunas da tabela", ["Anos da janela", "Todos os períodos"], "Anos da janela", "joao_visao")
-    with f2:
-        modo_foco = st.checkbox("🎯 Modo foco / auditoria", value=False, key="joao_foco")
-    with f3:
-        busca = st.text_input("🔍 Pesquisar conta", placeholder="Ex.: EBITDA, Pessoal, JCP, TI...", key="joao_busca")
-    periodos = anos_txt if visao == "Anos da janela" else [col for col in completa.columns[2:]]
-    df_t = completa[["Linha", "Conta / Indicador"] + periodos].copy()
-    if busca:
-        df_t = df_t[df_t["Conta / Indicador"].str.contains(busca, case=False, regex=False, na=False)]
-    elif modo_foco:
-        termos = "EBITDA|Despesa|Lucro|Receita l|Imposto|JCP|Pessoal|Tecnologia|Intang|Amortiza|financeiro"
-        df_t = df_t[df_t["Conta / Indicador"].str.contains(termos, case=False, na=False)]
-    for col in periodos:
-        df_t[col] = [br(v, 2) if isinstance(v, (int, float)) and pd.notna(v) else "" for v in
-                     pd.to_numeric(df_t[col], errors="coerce")]
-    st.caption(f"{len(df_t)} contas · {len(periodos)} período(s) · valores em R$ mil (margens em fração).")
-    st.dataframe(df_t, hide_index=True, width="stretch", height=480)
-    st.download_button("⬇️ Exportar tabela para CSV / Excel",
-                       df_t.to_csv(index=False, sep=";").encode("utf-8-sig"), "B3SA3_DRE_Gerencial.csv", "text/csv",
-                       key="joao_csv")
-    c.fonte([("DRE gerencial", "Planilha B3 · IS (New Seg)", "Todas as linhas da aba, como publicadas")],
-            nota="Mudança em relação ao Streamlit original: a planilha é lida do arquivo oficial 2T26 salvo no projeto, "
-                 "em vez de baixada da internet a cada abertura.")
 
     # ---------------------------------------------------------------- Oportunidades
     m_ini, m_fim = modelos[anos[0]], modelos[anos[-1]]

@@ -12,14 +12,10 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 
 # Cores oficiais dos ícones dos ODS (ONU)
 ODS = [
-    (4, "Educação de qualidade", "#C5192D", "B3 Social e educação financeira para novos investidores."),
     (8, "Trabalho decente e crescimento econômico", "#A21942",
-     "Mercado de capitais como fonte de financiamento das empresas (foco da aba da Camila)."),
+     "Mercado de capitais como fonte de financiamento das empresas (foco da aba de Desenvolvimento de Mercado)."),
     (9, "Indústria, inovação e infraestrutura", "#FD6925",
-     "Recursos captados na B3 financiam projetos, infraestrutura e inovação (foco da aba da Camila)."),
-    (10, "Redução das desigualdades", "#DD1367", "Acesso de pessoas físicas ao investimento."),
-    (11, "Cidades e comunidades sustentáveis", "#FD9D24", "CRI e LCI financiam moradia e construção."),
-    (13, "Ação contra a mudança global do clima", "#3F7E44", "Índice ICO2 B3 e gestão de emissões."),
+     "Recursos captados na B3 financiam projetos, infraestrutura e inovação (foco da aba de Desenvolvimento de Mercado)."),
 ]
 
 FICHA = [
@@ -52,19 +48,19 @@ FONTES = [
     ("Moody's Local Brasil", "Relatório de crédito e comunicado de rating da B3 (faixas de alavancagem e cobertura)",
      "https://moodyslocal.com.br/"),
     ("Banco Central do Brasil", "Histórico da taxa Selic (Copom)", "https://www.bcb.gov.br/controleinflacao/historicotaxasjuros"),
-    ("Imprensa e consultorias de mercado", "Séries de IPOs e valor de mercado dos bancos (citadas na aba da Camila)", ""),
+    ("Imprensa e consultorias de mercado", "Séries de IPOs e valor de mercado dos bancos (citadas na aba de Desenvolvimento de Mercado)", ""),
 ]
 
 ABAS = [
-    ("📈", "Desenvolvimento de Mercado, Impacto Econômico & ODS", "Camila",
+    ("📈", "Desenvolvimento de Mercado, Impacto Econômico & ODS", "",
      "Como evoluíram investidores, custódia, emissões, IPOs e o crédito imobiliário e do agro?"),
-    ("💰", "Receita, Diversificação & Apetite por Produtos", "Enzo",
+    ("💰", "Receita, Diversificação & Apetite por Produtos", "",
      "De onde vem a receita da B3 e quanto ela depende do mercado de ações?"),
-    ("⚙️", "Eficiência Operacional, Custos e Lucratividade", "João",
+    ("⚙️", "Eficiência Operacional, Custos e Lucratividade", "",
      "Quanto da receita vira lucro e quais custos têm espaço para melhorar?"),
-    ("🏦", "Solidez Financeira, Endividamento e Geração de Valor", "Victor",
+    ("🏦", "Solidez Financeira, Endividamento e Geração de Valor", "",
      "A B3 é sólida e o caixa que gera volta ao acionista de forma sustentável?"),
-    ("🎯", "Conclusão", "Grupo", "Quais são as oportunidades prioritárias, somando as quatro análises?"),
+    ("🎯", "Conclusão", "", "Quais são as oportunidades prioritárias, somando as quatro análises?"),
 ]
 
 
@@ -105,7 +101,7 @@ def render(janela):
 
     # ---------------------------------------------------------------- ODS
     st.markdown("### 🌍 ODS impactados")
-    st.caption("Objetivos de Desenvolvimento Sustentável da ONU ligados à atuação da B3. A aba da Camila explora os "
+    st.caption("Objetivos de Desenvolvimento Sustentável da ONU ligados à atuação da B3. A aba de Desenvolvimento de Mercado explora os "
                "ODS 8 e 9 com dados.")
     cols = st.columns(len(ODS))
     for col, (n, nome, cor, porque) in zip(cols, ODS):
@@ -120,7 +116,7 @@ def render(janela):
     # ---------------------------------------------------------------- Estrutura do painel
     st.markdown("### 🧭 Como o painel está organizado")
     for emoji, tema, quem, pergunta in ABAS:
-        st.markdown(c.md(f"{emoji} **{tema}** · {quem} — _{pergunta}_"))
+        st.markdown(c.md(f"{emoji} **{tema}** — _{pergunta}_"))
 
     # ---------------------------------------------------------------- Ferramentas e fontes
     f1, f2 = st.columns(2)
