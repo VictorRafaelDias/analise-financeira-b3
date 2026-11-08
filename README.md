@@ -33,10 +33,10 @@ Projeto Integrador III · Tecnologia em Ciência de Dados.
 | Aba | Tema | Responsável | Arquivo |
 |---|---|---|---|
 | 🏛️ Visão geral | Ficha técnica, ODS impactados, ferramentas e fontes | Grupo | `abas/introducao.py` |
-| 📈 Desenvolvimento de Mercado | Investidores, custódia, emissões, IPOs, CRI/CRA, LCI/LCA, bancos e ODS | Camila | `abas/camila.py`, `abas/camila_mercado.py` |
-| 💰 Receita & Diversificação | Segmentos de receita, Renda Variável x Renda Fixa, margens | Enzo | `abas/enzo.py` |
-| ⚙️ Eficiência & Lucratividade | Ponte de resultado, custos, margens, DRE gerencial | João | `abas/joao.py` |
-| 🏦 Solidez Financeira | Caixa x dívida, alavancagem, conversão de caixa, retorno ao acionista | Victor | `abas/victor.py` |
+| 📈 Desenvolvimento de Mercado | Investidores, custódia, emissões, IPOs, CRI/CRA, LCI/LCA, bancos e ODS | Camila ([@Cami-teles](https://github.com/Cami-teles)) | `abas/camila.py`, `abas/camila_mercado.py` |
+| 💰 Receita & Diversificação | Segmentos de receita, Renda Variável x Renda Fixa, margens | Enzo ([@enzofernandes-ds](https://github.com/enzofernandes-ds)) | `abas/enzo.py` |
+| ⚙️ Eficiência & Lucratividade | Ponte de resultado, custos, margens, Pareto de custos | João ([@joaoaugusto041](https://github.com/joaoaugusto041)) | `abas/joao.py` |
+| 🏦 Solidez Financeira | Caixa x dívida, alavancagem, conversão de caixa, retorno ao acionista | Victor ([@VictorRafaelDias](https://github.com/VictorRafaelDias)) | `abas/victor.py` |
 | 🎯 Conclusão | Consolidação das oportunidades das quatro abas | Grupo | `abas/conclusao.py` |
 
 ## ▶️ Como rodar
