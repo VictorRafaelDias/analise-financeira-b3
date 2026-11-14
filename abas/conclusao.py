@@ -61,17 +61,21 @@ def render(janela):
     c.cabecalho_secao("A história em uma frase",
                       "A B3 diversificou a receita e segue sólida, mas está devolvendo mais caixa do que gera e "
                       "perdendo margem; a prioridade é eficiência e disciplina de capital")
-    c.leitura(
+    partes = [
         f"<b>Mercado:</b> a base de investidores foi de {br(n['inv_ini'], 1)} para {br(n['inv_fim'], 1)} milhões "
-        f"({n['ini']}–{n['fim']}), mas cresce devagar desde 2022.<br>"
+        f"({n['ini']}–{n['fim']}), mas cresce devagar desde 2022.",
         f"<b>Receita:</b> a receita bruta variou {pct(n['rb_var'], 1, sinal=True)} e a Renda Variável caiu de "
         f"{pct(n['rv_peso_ini'], 1)} para {pct(n['rv_peso_fim'], 1)} da receita: o modelo ficou menos dependente do "
-        "volume de ações.<br>"
+        "volume de ações.",
         f"<b>Eficiência:</b> a margem EBITDA recorrente foi de {pct(n['mg_ini'], 1)} para {pct(n['mg_fim'], 1)}: "
-        "os custos (pessoal e TI) cresceram mais que a receita.<br>"
+        "os custos (pessoal e TI) cresceram mais que a receita.",
         f"<b>Solidez:</b> no {n['per']}, alavancagem de {br(n['alav'], 2)}x (abaixo do gatilho de 2,5x) e folga "
         f"de R$ {br(n['folga'] / 1e6, 1)} bi, mas payout de {pct(n['payout'], 0)} e cobertura de juros de "
-        f"{br(n['cobertura'], 1)}x, abaixo da faixa da Moody's.")
+        f"{br(n['cobertura'], 1)}x, abaixo da faixa da Moody's.",
+    ]
+    if janela.simples:  # mesma ordem das abas da versão simplificada: Solidez, Receita, Eficiência, Mercado
+        partes = [partes[3], partes[1], partes[2], partes[0]]
+    c.leitura("<br>".join(partes))
     c.diagnostico([
         "**Mesma causa em duas abas:** a base de investidores estagnada (Mercado) e a receita de Renda Variável em queda "
         "(Receita) refletem o mercado de ações mais fraco; a diversificação compensou na receita, não no volume.",
@@ -130,8 +134,8 @@ def render(janela):
         "com atenção à margem dessas linhas, e estimular volume em Renda Variável.\n"
         "4. **Ampliar o mercado:** retomar a entrada de investidores pessoa física e destravar instrumentos em "
         "queda (CRI), reforçando o papel da B3 no financiamento das empresas (ODS 8 e 9).\n"
-        "5. **Transparência:** divulgar FCO sem aplicações, caixa próprio, dívida por instrumento e "
-        "séries de emissões consistentes."
+        "5. **Transparência:** divulgar FCO sem aplicações, caixa próprio, dívida por instrumento"
+        + ("." if janela.simples else " e séries de emissões consistentes.")
     ))
     c.fonte([("Oportunidades", "As quatro abas de análise", "Registradas por cada aba na mesma janela"),
              ("Números da leitura integrada", "DRE IS (New Seg), base de solidez e dados de mercado",

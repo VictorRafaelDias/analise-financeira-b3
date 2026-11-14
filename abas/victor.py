@@ -395,144 +395,145 @@ def render(janela):
     ])
 
     # ======================================================================================
-    # 6. Bloco 3 · Conversão de caixa
-    # ======================================================================================
-    cabecalho(
-        3, "Conversão de caixa", "O FCO oficial oscila muito mais que o lucro, e a explicação está numa linha da DFC",
-        "O FCO oficial oscila entre 0,66x e 2,34x o lucro, enquanto o lucro fica estável em R\\$ 4,1–4,7 bi. A oscilação "
-        "vem de uma linha que a B3 lança dentro do operacional: a variação das aplicações financeiras.",
-    )
-    v3 = visao("v3")
-    if v3 == "Macro":
-        df3 = sd.serie(tri, anual, gran, anos,
-                       flows=["lucro_liquido_acionistas", "fco", "fcl", "var_aplicacoes_financeiras"])
-        plot(sc.macro_bloco3(df3, unidade, destacar))
-        conv = df3["fco"] / df3["lucro_liquido_acionistas"]
-        st.markdown(
-            f"Conversão FCO ÷ lucro entre **{mult(conv.min())}** e **{mult(conv.max())}**, com lucro entre "
-            f"{dinheiro(df3['lucro_liquido_acionistas'].min(), unidade)} e {dinheiro(df3['lucro_liquido_acionistas'].max(), unidade)}"
-            f" por período{' (LTM)' if gran == 'LTM' else ''}. Os números acima das barras são a conversão FCO ÷ lucro."
-            + (" 2026 (YTD) aparece mais claro: só 2 trimestres." if gran == "Anual" and anos[1] == 2026 else "")
+    if not janela.simples:  # versão simplificada: sem conversão de caixa e retorno ao acionista
+        # 6. Bloco 3 · Conversão de caixa
+        # ======================================================================================
+        cabecalho(
+            3, "Conversão de caixa", "O FCO oficial oscila muito mais que o lucro, e a explicação está numa linha da DFC",
+            "O FCO oficial oscila entre 0,66x e 2,34x o lucro, enquanto o lucro fica estável em R\\$ 4,1–4,7 bi. A oscilação "
+            "vem de uma linha que a B3 lança dentro do operacional: a variação das aplicações financeiras.",
         )
-    else:
-        base = anual[(anual["ano"] >= anos[0]) & (anual["ano"] <= anos[1])]
-        opcoes = list(base["periodo"])
-        padrao = opcoes.index("2025") if "2025" in opcoes else len(opcoes) - 1
-        per = botoes("Ano", opcoes, opcoes[padrao], key="p3_ano")
-        r3 = base[base["periodo"] == per].iloc[0]
-        st.markdown("**Do lucro ao FCL depois dos juros (só linhas oficiais)**")
-        plot(sc.micro_bloco3(r3, unidade))
-        d3 = 2 if suf == "bi" else 0
-        antes = r3["fco"] - r3["var_aplicacoes_financeiras"]
-        st.markdown(
-            f"Em {per}, antes das aplicações a operação gerou **{dinheiro(antes, unidade, d3)}** contra lucro de "
-            f"{dinheiro(r3['lucro_liquido_dfc'], unidade, d3)}. A linha de aplicações financeiras "
-            f"(<span style='color:#9A7400'>**amarela hachurada**</span>, incoerência destacada) somou {dinheiro(r3['var_aplicacoes_financeiras'], unidade, d3, sinal=True)} "
-            f"e o FCO publicado ficou em **{dinheiro(r3['fco'], unidade, d3)}**. Depois do CAPEX e dos juros, sobram "
-            f"**{dinheiro(r3['fcl_pos_juros'], unidade, d3)}**.",
-            unsafe_allow_html=True,
-        )
-        st.caption("A soma dos passos fecha exatamente com `fco` em todos os anos (testado ao carregar).")
-
-    diagnostico([
-        "Antes das aplicações, a operação gera mais caixa do que lucro: em 2025, R\\$ 7,2 bi contra R\\$ 4,6 bi. Depois que a B3 "
-        "lança R\\$ 2,7 bi de aplicações no operacional, o FCO publicado cai para R\\$ 4,4 bi.",
-        "Em 2022 e 2024 aconteceu o contrário: a B3 resgatou aplicações (+R\\$ 4,5 bi e +R\\$ 2,6 bi) e o FCO saltou para "
-        "R\\$ 9,9 e R\\$ 9,3 bi.",
-        "Em 2025, o IR diferido de R\\$ 1,13 bi (R\\$ 1,04 bi de atualização não recorrente do saldo) reduziu o lucro sem sair caixa.",
-        "CAPEX baixo: entre 2,4% e 2,9% da receita líquida desde 2022.",
-        "Os juros ficam no fluxo de financiamento, fora do FCO. Por isso o número que importa para o Bloco 4 é o FCL depois "
-        "dos juros (R\\$ 2,35 bi em 2025).",
-        "**Destaque de transparência:** a norma contábil permite essa classificação, mas ela deixa o FCO difícil de comparar "
-        "com o lucro. Melhoria: a B3 poderia divulgar também o FCO sem a movimentação de aplicações.",
-    ])
-    tabela_fonte([
-        ("Lucro líquido", "IS (New Seg) · 59 / DFC · 7", "`lucro_liquido_acionistas`, `lucro_liquido_dfc`"),
-        ("FCO", "Cash Flow Statement · 52", "`fco`"),
-        ("D&A, IR diferido, juros", "Cash Flow Statement · 9, 12–13, 16",
-         "`depreciacao_amortizacao`, `ir_diferido_total_dfc`, `despesas_juros_dfc`"),
-        ("Outros ajustes", "Cash Flow Statement · 10–11, 14–15, 17–29", "`outros_ajustes_dfc`"),
-        ("Aplicações financeiras", "Cash Flow Statement · 32", "`var_aplicacoes_financeiras`"),
-        ("Garantias e custódia", "Cash Flow Statement · 40 e 41", "`var_garantias_recebidas`, `var_proventos_custodia`"),
-        ("Capital de giro", "Cash Flow Statement · 31, 33–39, 42–50", "`capital_de_giro_dfc`"),
-        ("IR pago", "Cash Flow Statement · 51", "`ir_cs_pago`"),
-        ("CAPEX", "Cash Flow Statement · 55 + 59", "`capex_total`"),
-    ])
-
-    # ======================================================================================
-    # 7. Bloco 4 · Retorno ao acionista
-    # ======================================================================================
-    cabecalho(
-        4, "Retorno ao acionista", "A B3 devolve mais do que lucra, e a diferença saiu da folga de caixa",
-        "A B3 devolve ao acionista de 116% a 150% do lucro todo ano. Somando 2021 a 2025, ela pagou R\\$ 28,3 bi, R\\$ 5,4 bi "
-        "a mais que o FCL depois dos juros (R\\$ 22,9 bi). A diferença saiu da folga de caixa.",
-    )
-    v4 = visao("v4")
-    if v4 == "Macro":
-        partes = (["dividendos_declarados", "jcp_declarados", "recompras_dist"] if regime == "Declarado"
-                  else ["proventos_pagos_caixa", "recompra_caixa"])
-        df4 = sd.serie(tri, anual, gran, anos, flows=[*partes, "lucro_liquido_acionistas"])
-        plot(sc.macro_bloco4(df4, unidade, regime))
-        tot = df4[partes].sum(axis=1)
-        pay = tot / df4["lucro_liquido_acionistas"]
-        completos = ~df4["parcial"]
-        st.markdown(
-            f"Regime **{regime.lower()}**: a B3 devolveu entre **{pct(pay[completos].min())}** e "
-            f"**{pct(pay[completos].max())}** do lucro por período{' (LTM)' if gran == 'LTM' else ''}"
-            f"{' (anos fechados)' if gran == 'Anual' else ''}. O traço cinza marca o lucro (100%); o número acima é "
-            f"{'o payout' if regime == 'Declarado' else 'o pago ÷ lucro'}."
-            + (" No trimestral, proventos e recompras se concentram em alguns trimestres; prefira Anual ou LTM."
-               if gran == "Trimestral" else "")
-        )
-    else:
-        st.markdown("**Ponte da folga entre dois trimestres**")
-        qs = list(tri["trimestre"])
-        q0, q1 = intervalo("De / Até", qs, "4T20", qs[-1], key="p4_intervalo")
-        i0, i1 = qs.index(q0), qs.index(q1)
-        if i1 <= i0:
-            st.info("Escolha um trimestre final posterior ao inicial.")
-        else:
-            fig4, pas = sc.micro_bloco4_ponte(tri, i0, i1, unidade)
-            plot(fig4)
-            devolvido = -(pas["Proventos pagos"] + pas["Recompras pagas"])
+        v3 = visao("v3")
+        if v3 == "Macro":
+            df3 = sd.serie(tri, anual, gran, anos,
+                           flows=["lucro_liquido_acionistas", "fco", "fcl", "var_aplicacoes_financeiras"])
+            plot(sc.macro_bloco3(df3, unidade, destacar))
+            conv = df3["fco"] / df3["lucro_liquido_acionistas"]
             st.markdown(
-                f"De {q0} a {q1}, o FCL somou **{dinheiro(pas['FCL'], unidade)}** e a B3 devolveu "
-                f"**{dinheiro(devolvido, unidade)}** (proventos + recompras pagos), além de "
-                f"{dinheiro(-pas['Juros'], unidade)} de juros. A folga foi de {dinheiro(-tri.loc[i0, 'divida_liquida'], unidade)} "
-                f"para **{dinheiro(-tri.loc[i1, 'divida_liquida'], unidade)}**."
+                f"Conversão FCO ÷ lucro entre **{mult(conv.min())}** e **{mult(conv.max())}**, com lucro entre "
+                f"{dinheiro(df3['lucro_liquido_acionistas'].min(), unidade)} e {dinheiro(df3['lucro_liquido_acionistas'].max(), unidade)}"
+                f" por período{' (LTM)' if gran == 'LTM' else ''}. Os números acima das barras são a conversão FCO ÷ lucro."
+                + (" 2026 (YTD) aparece mais claro: só 2 trimestres." if gran == "Anual" and anos[1] == 2026 else "")
             )
-            st.caption("“Aplicações no FCO” (amarelo) entra porque o caixa total inclui as aplicações e o FCO as desconta: é a "
-                       "soma oficial da linha 32 no período, não um ajuste. “Câmbio e outros” é o resíduo que fecha a conta.")
+        else:
+            base = anual[(anual["ano"] >= anos[0]) & (anual["ano"] <= anos[1])]
+            opcoes = list(base["periodo"])
+            padrao = opcoes.index("2025") if "2025" in opcoes else len(opcoes) - 1
+            per = botoes("Ano", opcoes, opcoes[padrao], key="p3_ano")
+            r3 = base[base["periodo"] == per].iloc[0]
+            st.markdown("**Do lucro ao FCL depois dos juros (só linhas oficiais)**")
+            plot(sc.micro_bloco3(r3, unidade))
+            d3 = 2 if suf == "bi" else 0
+            antes = r3["fco"] - r3["var_aplicacoes_financeiras"]
+            st.markdown(
+                f"Em {per}, antes das aplicações a operação gerou **{dinheiro(antes, unidade, d3)}** contra lucro de "
+                f"{dinheiro(r3['lucro_liquido_dfc'], unidade, d3)}. A linha de aplicações financeiras "
+                f"(<span style='color:#9A7400'>**amarela hachurada**</span>, incoerência destacada) somou {dinheiro(r3['var_aplicacoes_financeiras'], unidade, d3, sinal=True)} "
+                f"e o FCO publicado ficou em **{dinheiro(r3['fco'], unidade, d3)}**. Depois do CAPEX e dos juros, sobram "
+                f"**{dinheiro(r3['fcl_pos_juros'], unidade, d3)}**.",
+                unsafe_allow_html=True,
+            )
+            st.caption("A soma dos passos fecha exatamente com `fco` em todos os anos (testado ao carregar).")
 
-        st.markdown("**Acumulado desde 2021: FCL depois dos juros x devolvido ao acionista (pago)**")
-        plot(sc.micro_bloco4_acumulado(anual, unidade))
-        a5 = anual[(anual["ano"] >= 2021) & (anual["ano"] <= 2025)]
-        st.markdown(
-            f"De 2021 a 2025, a B3 gerou **{dinheiro(a5['fcl_pos_juros'].sum(), unidade)}** de FCL depois dos juros e devolveu "
-            f"**{dinheiro(a5['retorno_acionista_caixa'].sum(), unidade)}**, "
-            f"{dinheiro(a5['retorno_acionista_caixa'].sum() - a5['fcl_pos_juros'].sum(), unidade)} a mais. O acumulado é usado "
-            "porque, ano a ano, as aplicações no FCO distorcem a comparação."
+        diagnostico([
+            "Antes das aplicações, a operação gera mais caixa do que lucro: em 2025, R\\$ 7,2 bi contra R\\$ 4,6 bi. Depois que a B3 "
+            "lança R\\$ 2,7 bi de aplicações no operacional, o FCO publicado cai para R\\$ 4,4 bi.",
+            "Em 2022 e 2024 aconteceu o contrário: a B3 resgatou aplicações (+R\\$ 4,5 bi e +R\\$ 2,6 bi) e o FCO saltou para "
+            "R\\$ 9,9 e R\\$ 9,3 bi.",
+            "Em 2025, o IR diferido de R\\$ 1,13 bi (R\\$ 1,04 bi de atualização não recorrente do saldo) reduziu o lucro sem sair caixa.",
+            "CAPEX baixo: entre 2,4% e 2,9% da receita líquida desde 2022.",
+            "Os juros ficam no fluxo de financiamento, fora do FCO. Por isso o número que importa para o Bloco 4 é o FCL depois "
+            "dos juros (R\\$ 2,35 bi em 2025).",
+            "**Destaque de transparência:** a norma contábil permite essa classificação, mas ela deixa o FCO difícil de comparar "
+            "com o lucro. Melhoria: a B3 poderia divulgar também o FCO sem a movimentação de aplicações.",
+        ])
+        tabela_fonte([
+            ("Lucro líquido", "IS (New Seg) · 59 / DFC · 7", "`lucro_liquido_acionistas`, `lucro_liquido_dfc`"),
+            ("FCO", "Cash Flow Statement · 52", "`fco`"),
+            ("D&A, IR diferido, juros", "Cash Flow Statement · 9, 12–13, 16",
+             "`depreciacao_amortizacao`, `ir_diferido_total_dfc`, `despesas_juros_dfc`"),
+            ("Outros ajustes", "Cash Flow Statement · 10–11, 14–15, 17–29", "`outros_ajustes_dfc`"),
+            ("Aplicações financeiras", "Cash Flow Statement · 32", "`var_aplicacoes_financeiras`"),
+            ("Garantias e custódia", "Cash Flow Statement · 40 e 41", "`var_garantias_recebidas`, `var_proventos_custodia`"),
+            ("Capital de giro", "Cash Flow Statement · 31, 33–39, 42–50", "`capital_de_giro_dfc`"),
+            ("IR pago", "Cash Flow Statement · 51", "`ir_cs_pago`"),
+            ("CAPEX", "Cash Flow Statement · 55 + 59", "`capex_total`"),
+        ])
+
+        # ======================================================================================
+        # 7. Bloco 4 · Retorno ao acionista
+        # ======================================================================================
+        cabecalho(
+            4, "Retorno ao acionista", "A B3 devolve mais do que lucra, e a diferença saiu da folga de caixa",
+            "A B3 devolve ao acionista de 116% a 150% do lucro todo ano. Somando 2021 a 2025, ela pagou R\\$ 28,3 bi, R\\$ 5,4 bi "
+            "a mais que o FCL depois dos juros (R\\$ 22,9 bi). A diferença saiu da folga de caixa.",
         )
+        v4 = visao("v4")
+        if v4 == "Macro":
+            partes = (["dividendos_declarados", "jcp_declarados", "recompras_dist"] if regime == "Declarado"
+                      else ["proventos_pagos_caixa", "recompra_caixa"])
+            df4 = sd.serie(tri, anual, gran, anos, flows=[*partes, "lucro_liquido_acionistas"])
+            plot(sc.macro_bloco4(df4, unidade, regime))
+            tot = df4[partes].sum(axis=1)
+            pay = tot / df4["lucro_liquido_acionistas"]
+            completos = ~df4["parcial"]
+            st.markdown(
+                f"Regime **{regime.lower()}**: a B3 devolveu entre **{pct(pay[completos].min())}** e "
+                f"**{pct(pay[completos].max())}** do lucro por período{' (LTM)' if gran == 'LTM' else ''}"
+                f"{' (anos fechados)' if gran == 'Anual' else ''}. O traço cinza marca o lucro (100%); o número acima é "
+                f"{'o payout' if regime == 'Declarado' else 'o pago ÷ lucro'}."
+                + (" No trimestral, proventos e recompras se concentram em alguns trimestres; prefira Anual ou LTM."
+                   if gran == "Trimestral" else "")
+            )
+        else:
+            st.markdown("**Ponte da folga entre dois trimestres**")
+            qs = list(tri["trimestre"])
+            q0, q1 = intervalo("De / Até", qs, "4T20", qs[-1], key="p4_intervalo")
+            i0, i1 = qs.index(q0), qs.index(q1)
+            if i1 <= i0:
+                st.info("Escolha um trimestre final posterior ao inicial.")
+            else:
+                fig4, pas = sc.micro_bloco4_ponte(tri, i0, i1, unidade)
+                plot(fig4)
+                devolvido = -(pas["Proventos pagos"] + pas["Recompras pagas"])
+                st.markdown(
+                    f"De {q0} a {q1}, o FCL somou **{dinheiro(pas['FCL'], unidade)}** e a B3 devolveu "
+                    f"**{dinheiro(devolvido, unidade)}** (proventos + recompras pagos), além de "
+                    f"{dinheiro(-pas['Juros'], unidade)} de juros. A folga foi de {dinheiro(-tri.loc[i0, 'divida_liquida'], unidade)} "
+                    f"para **{dinheiro(-tri.loc[i1, 'divida_liquida'], unidade)}**."
+                )
+                st.caption("“Aplicações no FCO” (amarelo) entra porque o caixa total inclui as aplicações e o FCO as desconta: é a "
+                           "soma oficial da linha 32 no período, não um ajuste. “Câmbio e outros” é o resíduo que fecha a conta.")
 
-    diagnostico([
-        "Dividendos caíram de R\\$ 4,1 bi (2020) para zero (2025). Recompras viraram o principal instrumento (R\\$ 2,5 a 3,7 bi por "
-        "ano desde 2022). JCP de R\\$ 3,0 bi em 2025, com um extraordinário no 4T25.",
-        "Ações em circulação: de 6,0 bi (1T22) para 5,0 bi (2T26), −17% (`acoes_circulacao`).",
-        "ROE de 17% para 26%, mais pela queda do PL (R\\$ 24,5 → 17,5 bi) do que pelo lucro.",
-        "A Moody's chega a uma leitura parecida: nos 12 meses até o 1T26, o fluxo de caixa livre depois das recompras foi de "
-        "apenas R\\$ 137 mi.",
-        "Declarado e pago diferem por prazo: em 2021 a B3 declarou R\\$ 6,0 bi e pagou R\\$ 7,4 bi.",
-    ])
-    tabela_fonte([
-        ("Dividendos, JCP, recompras (declarados)", "Distributions & Share Count · 6, 7, 8",
-         "`dividendos_declarados`, `jcp_declarados`, `recompras_dist`"),
-        ("Payout oficial", "Distributions & Share Count · 10", "`payout_total`"),
-        ("Ações em circulação", "Distributions & Share Count · 13", "`acoes_circulacao`"),
-        ("Proventos e recompras pagos", "Cash Flow Statement · 78 e 71", "`proventos_pagos_caixa`, `recompra_caixa`"),
-        ("Aquisições e outros investimentos", "Cash Flow Statement · 68 − CAPEX", "`aquisicoes_outros_invest`"),
-    ])
+            st.markdown("**Acumulado desde 2021: FCL depois dos juros x devolvido ao acionista (pago)**")
+            plot(sc.micro_bloco4_acumulado(anual, unidade))
+            a5 = anual[(anual["ano"] >= 2021) & (anual["ano"] <= 2025)]
+            st.markdown(
+                f"De 2021 a 2025, a B3 gerou **{dinheiro(a5['fcl_pos_juros'].sum(), unidade)}** de FCL depois dos juros e devolveu "
+                f"**{dinheiro(a5['retorno_acionista_caixa'].sum(), unidade)}**, "
+                f"{dinheiro(a5['retorno_acionista_caixa'].sum() - a5['fcl_pos_juros'].sum(), unidade)} a mais. O acumulado é usado "
+                "porque, ano a ano, as aplicações no FCO distorcem a comparação."
+            )
 
-    # ======================================================================================
+        diagnostico([
+            "Dividendos caíram de R\\$ 4,1 bi (2020) para zero (2025). Recompras viraram o principal instrumento (R\\$ 2,5 a 3,7 bi por "
+            "ano desde 2022). JCP de R\\$ 3,0 bi em 2025, com um extraordinário no 4T25.",
+            "Ações em circulação: de 6,0 bi (1T22) para 5,0 bi (2T26), −17% (`acoes_circulacao`).",
+            "ROE de 17% para 26%, mais pela queda do PL (R\\$ 24,5 → 17,5 bi) do que pelo lucro.",
+            "A Moody's chega a uma leitura parecida: nos 12 meses até o 1T26, o fluxo de caixa livre depois das recompras foi de "
+            "apenas R\\$ 137 mi.",
+            "Declarado e pago diferem por prazo: em 2021 a B3 declarou R\\$ 6,0 bi e pagou R\\$ 7,4 bi.",
+        ])
+        tabela_fonte([
+            ("Dividendos, JCP, recompras (declarados)", "Distributions & Share Count · 6, 7, 8",
+             "`dividendos_declarados`, `jcp_declarados`, `recompras_dist`"),
+            ("Payout oficial", "Distributions & Share Count · 10", "`payout_total`"),
+            ("Ações em circulação", "Distributions & Share Count · 13", "`acoes_circulacao`"),
+            ("Proventos e recompras pagos", "Cash Flow Statement · 78 e 71", "`proventos_pagos_caixa`, `recompra_caixa`"),
+            ("Aquisições e outros investimentos", "Cash Flow Statement · 68 − CAPEX", "`aquisicoes_outros_invest`"),
+        ])
+
+        # ======================================================================================
     # 8. Diagnóstico de oportunidades
     # ======================================================================================
     cm.cabecalho_secao("Diagnóstico de oportunidades",

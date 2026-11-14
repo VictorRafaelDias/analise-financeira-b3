@@ -40,9 +40,58 @@ st.set_page_config(page_title="B3 · Painel Integrado", page_icon="📊", layout
 c.aplicar_css()
 
 # ======================================================================================
+# Versão do painel: escolhida na abertura (ou pelo link ?versao=) e trocada na barra lateral
+# ======================================================================================
+VERSOES = {"completo": "Completo", "simplificado": "Simplificado"}
+ss = st.session_state
+if "versao" not in ss and st.query_params.get("versao") in VERSOES:
+    ss["versao"] = st.query_params["versao"]
+
+
+def _escolher(versao):
+    ss["versao"] = versao
+    st.query_params["versao"] = versao
+
+
+if "versao" not in ss:
+    logo = c.logo_b3()
+    if logo:
+        st.image(logo, width=130)
+    st.title("B3 S.A. — Painel Integrado de Análise")
+    st.markdown("#### Qual versão você quer abrir?")
+    v1, v2 = st.columns(2)
+    with v1, st.container(border=True):
+        st.markdown("### 📘 Completo")
+        st.markdown("Todas as seções das quatro análises, com gráficos de detalhe, IPOs, emissões, bancos, ritmo "
+                    "trimestral, conversão de caixa e retorno ao acionista.")
+        st.caption("Ordem: Visão geral → Desenvolvimento de Mercado → Receita → Eficiência → Solidez → Conclusão")
+        st.button("Abrir o completo", key="abrir_completo", width="stretch", on_click=_escolher, args=("completo",))
+    with v2, st.container(border=True):
+        st.markdown("### 📗 Simplificado")
+        st.markdown("Só as seções principais de cada análise, para uma apresentação mais curta e direta.")
+        st.caption("Ordem: Visão geral → Solidez → Receita → Eficiência → Desenvolvimento de Mercado → Conclusão")
+        st.button("Abrir o simplificado", key="abrir_simplificado", type="primary", width="stretch",
+                  on_click=_escolher, args=("simplificado",))
+    st.stop()
+st.query_params["versao"] = ss["versao"]
+SIMPLES = ss["versao"] == "simplificado"
+
+# ======================================================================================
 # Janela de período (igual para todas as abas)
 # ======================================================================================
 with st.sidebar:
+    ss.setdefault("versao_ver", 0)
+
+    def _troca_versao():
+        escolha = ss.get(f"versao_ctrl_{ss['versao_ver']}")
+        if escolha:
+            _escolher(escolha)
+        ss["versao_ver"] += 1
+
+    st.segmented_control("🧭 Versão do painel", list(VERSOES), default=ss["versao"], format_func=VERSOES.get,
+                         key=f"versao_ctrl_{ss['versao_ver']}", on_change=_troca_versao,
+                         help="Simplificado: só as seções principais de cada aba e a ordem da apresentação "
+                              "(Solidez primeiro). Completo: todas as seções.")
     c.seletor_tema()
     st.divider()
     st.header("📅 Janela de análise")
@@ -52,7 +101,6 @@ with st.sidebar:
              "até o 2T26 nos gráficos trimestrais e LTM.")
     # Dois jeitos de escolher a mesma janela, sempre sincronizados: intervalo em linha e blocos De/Até.
     # Fonte única: ss["janela"]. Ao mexer em um controle, a versão muda e os dois são recriados com o valor novo.
-    ss = st.session_state
     ss.setdefault("janela", (2020, 2026))
     ss.setdefault("janela_versao", 0)
     v = ss["janela_versao"]
@@ -74,7 +122,7 @@ with st.sidebar:
     st.segmented_control("Até", anos_opcoes, default=ss["janela"][1], format_func=rotulo_ano, key=f"janela_ate_{v}",
                          on_change=_dos_blocos)
     ano_ini, ano_fim = ss["janela"]
-    janela = c.Janela(ano_ini, ano_fim)
+    janela = c.Janela(ano_ini, ano_fim, simples=SIMPLES)
     st.caption(f"Anos fechados na janela: {janela.anos_fechados[0] if janela.anos_fechados else '—'}–{janela.ano_ref}"
                + (" · 2026 parcial (1T26–2T26)" if janela.inclui_parcial else ""))
     st.divider()
@@ -103,8 +151,8 @@ if logo:
     g_tit.title("B3 S.A. — Painel Integrado de Análise")
 else:
     st.title("📊 B3 S.A. — Painel Integrado de Análise")
-st.caption(f"PI III · Desenvolvimento de mercado, receita, eficiência e solidez financeira da B3 · janela "
-           f"{janela.rotulo()} · fontes oficiais da B3 (RI, 2T26) e dados de mercado da B3")
+st.caption(f"PI III · {'Versão simplificada' if SIMPLES else 'Versão completa'} · janela {janela.rotulo()} · "
+           "fontes oficiais da B3 (RI, 2T26) e dados de mercado da B3")
 valores, rotulos, _ = dre.carregar_dre()
 erros = dre.validar_dre(valores, rotulos)
 if erros:
@@ -123,23 +171,17 @@ with st.expander("ℹ️ Como ler este painel"):
         "aparecem destacadas, não corrigidas."
     ))
 
-abas = st.tabs([
-    "🏛️ Visão geral",
-    "📈 Desenvolvimento de Mercado",
-    "💰 Receita & Diversificação",
-    "⚙️ Eficiência & Lucratividade",
-    "🏦 Solidez Financeira",
-    "🎯 Conclusão",
-])
-with abas[0]:
-    introducao.render(janela)
-with abas[1]:
-    camila.render(janela)
-with abas[2]:
-    enzo.render(janela)
-with abas[3]:
-    joao.render(janela)
-with abas[4]:
-    victor.render(janela)
-with abas[5]:
-    conclusao.render(janela)
+ABAS = {
+    "introducao": ("🏛️ Visão geral", introducao),
+    "camila": ("📈 Desenvolvimento de Mercado", camila),
+    "enzo": ("💰 Receita & Diversificação", enzo),
+    "joao": ("⚙️ Eficiência & Lucratividade", joao),
+    "victor": ("🏦 Solidez Financeira", victor),
+    "conclusao": ("🎯 Conclusão", conclusao),
+}
+# A Conclusão fica sempre por último: ela lê as oportunidades registradas pelas outras abas.
+ORDEM = (["introducao", "victor", "enzo", "joao", "camila", "conclusao"] if SIMPLES
+         else ["introducao", "camila", "enzo", "joao", "victor", "conclusao"])
+for aba, chave in zip(st.tabs([ABAS[k][0] for k in ORDEM]), ORDEM):
+    with aba:
+        ABAS[chave][1].render(janela)

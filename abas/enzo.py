@@ -324,127 +324,128 @@ def render(janela):
              ("Deduções", "Planilha B3 · IS (New Seg)", "Linha 22 (PIS/Cofins 23, ISS 24)"),
              ("Renda Variável; Renda Fixa e Crédito", "Planilha B3 · IS (New Seg)", "Linhas 7 e 8")])
 
-    # ---------------------------------------------------------------- 3. Trimestral
-    c.cabecalho_secao("Ritmo trimestral", "A Renda Variável oscila; os demais segmentos estabilizam a receita")
-    valores_t, part = _participacao(t)
-    tri = list(t.index)
-    g1, g2 = st.columns(2)
-    with g1:
-        fig = go.Figure()
-        for s in part.columns:
-            fig.add_scatter(x=tri, y=part[s] * 100, name=s, mode="lines", stackgroup="um",
-                            line=dict(width=0.6, color=CORES_PART[s]), fillcolor=CORES_PART[s],
-                            hovertext=[f"<b>{s} · {q}</b><br>{pct(p, 1)} da receita · R$ {br(v / 1e3, 0)} mi"
-                                       + c.dica(s.split("/")[0].replace("Soluções de Dados", "Soluções Analíticas de Dados"))
-                                       for q, p, v in zip(tri, part[s], valores_t[s])], hoverinfo="text")
-        c.layout_base(fig, "Participação de cada segmento na receita (trimestral)", y_titulo="% da receita total")
-        fig.update_yaxes(range=[0, 100], ticksuffix="%")
-        fig.update_xaxes(type="category", tickangle=-45, nticks=14)
-        c.mostrar_grafico(fig, key="enz_part")
-        c.leitura(f"Renda Variável: {pct(part['Renda Variável'].iloc[0], 1)} ({tri[0]}) → "
-                  f"<b>{pct(part['Renda Variável'].iloc[-1], 1)}</b> ({tri[-1]}). Dados/Tecnologia: "
-                  f"{pct(part['Soluções de Dados/Tecnologia'].iloc[0], 1)} → "
-                  f"<b>{pct(part['Soluções de Dados/Tecnologia'].iloc[-1], 1)}</b>.")
-    with g2:
-        todos = valores.loc["renda_variavel", dre.trimestres_dre(valores)]
-        aa = todos / todos.shift(4) - 1
-        serie = rv_t / 1e3
-        niv = [c.nivel_por_variacao(aa[q]) if pd.notna(aa[q]) else "Baixo" for q in tri]
-        fig = go.Figure()
-        fig.add_scatter(x=tri, y=serie, name="Receita de Renda Variável", mode="lines+markers",
-                        line=dict(color=CORES_PART["Renda Variável"], width=3),
-                        marker=dict(size=11, color=[c.cor_oport(v) for v in niv], line=dict(color="white", width=1)),
-                        hovertext=[f"<b>{q}</b><br>R$ {br(v, 0)} mi<br>Var. a/a: "
-                                   f"{pct(aa[q], 1, sinal=True) if pd.notna(aa[q]) else 'n/d'}<br>Oportunidade: {nv}"
-                                   + c.dica("Renda Variável") for q, v, nv in zip(tri, serie, niv)], hoverinfo="text")
-        media = float(serie.mean())
-        fig.add_hline(y=media, line_dash="dash", line_color="#9e9e9e",
-                      annotation_text=f"Média: R$ {br(media, 0)} mi", annotation_position="top right",
-                      annotation_font=dict(size=11))
-        c.layout_base(fig, "Receita de Renda Variável por trimestre (cor = variação a/a)", y_titulo="R$ milhões",
-                      legenda=False)
-        fig.update_yaxes(range=[serie.min() * 0.85, serie.max() * 1.1])
-        fig.update_xaxes(type="category", tickangle=-45, nticks=14)
-        c.mostrar_grafico(fig, key="enz_rvtri")
-        c.leitura(f"Pico em {serie.idxmax()} (R$ {br(serie.max(), 0)} mi) e vale em {serie.idxmin()} "
-                  f"(R$ {br(serie.min(), 0)} mi). O ADTV não consta na DRE; a receita de Renda Variável é a referência.")
-    c.diagnostico([
-        "A participação da Renda Variável cai de forma contínua; Renda Fixa e Crédito e Dados/Tecnologia ocupam o espaço.",
-        "A receita de Renda Variável varia bastante entre trimestres (volume de negociação), enquanto a receita total é "
-        "mais estável: a diversificação reduz a volatilidade.",
-    ])
-    c.fonte([("Segmentos por trimestre", "Planilha B3 · IS (New Seg)", "Linhas 4, 6, 7, 8, 14 e 18; colunas 1T20–2T26")])
+    if not janela.simples:  # versão simplificada: sem ritmo trimestral e sem 'do faturamento ao resultado'
+        # ---------------------------------------------------------------- 3. Trimestral
+        c.cabecalho_secao("Ritmo trimestral", "A Renda Variável oscila; os demais segmentos estabilizam a receita")
+        valores_t, part = _participacao(t)
+        tri = list(t.index)
+        g1, g2 = st.columns(2)
+        with g1:
+            fig = go.Figure()
+            for s in part.columns:
+                fig.add_scatter(x=tri, y=part[s] * 100, name=s, mode="lines", stackgroup="um",
+                                line=dict(width=0.6, color=CORES_PART[s]), fillcolor=CORES_PART[s],
+                                hovertext=[f"<b>{s} · {q}</b><br>{pct(p, 1)} da receita · R$ {br(v / 1e3, 0)} mi"
+                                           + c.dica(s.split("/")[0].replace("Soluções de Dados", "Soluções Analíticas de Dados"))
+                                           for q, p, v in zip(tri, part[s], valores_t[s])], hoverinfo="text")
+            c.layout_base(fig, "Participação de cada segmento na receita (trimestral)", y_titulo="% da receita total")
+            fig.update_yaxes(range=[0, 100], ticksuffix="%")
+            fig.update_xaxes(type="category", tickangle=-45, nticks=14)
+            c.mostrar_grafico(fig, key="enz_part")
+            c.leitura(f"Renda Variável: {pct(part['Renda Variável'].iloc[0], 1)} ({tri[0]}) → "
+                      f"<b>{pct(part['Renda Variável'].iloc[-1], 1)}</b> ({tri[-1]}). Dados/Tecnologia: "
+                      f"{pct(part['Soluções de Dados/Tecnologia'].iloc[0], 1)} → "
+                      f"<b>{pct(part['Soluções de Dados/Tecnologia'].iloc[-1], 1)}</b>.")
+        with g2:
+            todos = valores.loc["renda_variavel", dre.trimestres_dre(valores)]
+            aa = todos / todos.shift(4) - 1
+            serie = rv_t / 1e3
+            niv = [c.nivel_por_variacao(aa[q]) if pd.notna(aa[q]) else "Baixo" for q in tri]
+            fig = go.Figure()
+            fig.add_scatter(x=tri, y=serie, name="Receita de Renda Variável", mode="lines+markers",
+                            line=dict(color=CORES_PART["Renda Variável"], width=3),
+                            marker=dict(size=11, color=[c.cor_oport(v) for v in niv], line=dict(color="white", width=1)),
+                            hovertext=[f"<b>{q}</b><br>R$ {br(v, 0)} mi<br>Var. a/a: "
+                                       f"{pct(aa[q], 1, sinal=True) if pd.notna(aa[q]) else 'n/d'}<br>Oportunidade: {nv}"
+                                       + c.dica("Renda Variável") for q, v, nv in zip(tri, serie, niv)], hoverinfo="text")
+            media = float(serie.mean())
+            fig.add_hline(y=media, line_dash="dash", line_color="#9e9e9e",
+                          annotation_text=f"Média: R$ {br(media, 0)} mi", annotation_position="top right",
+                          annotation_font=dict(size=11))
+            c.layout_base(fig, "Receita de Renda Variável por trimestre (cor = variação a/a)", y_titulo="R$ milhões",
+                          legenda=False)
+            fig.update_yaxes(range=[serie.min() * 0.85, serie.max() * 1.1])
+            fig.update_xaxes(type="category", tickangle=-45, nticks=14)
+            c.mostrar_grafico(fig, key="enz_rvtri")
+            c.leitura(f"Pico em {serie.idxmax()} (R$ {br(serie.max(), 0)} mi) e vale em {serie.idxmin()} "
+                      f"(R$ {br(serie.min(), 0)} mi). O ADTV não consta na DRE; a receita de Renda Variável é a referência.")
+        c.diagnostico([
+            "A participação da Renda Variável cai de forma contínua; Renda Fixa e Crédito e Dados/Tecnologia ocupam o espaço.",
+            "A receita de Renda Variável varia bastante entre trimestres (volume de negociação), enquanto a receita total é "
+            "mais estável: a diversificação reduz a volatilidade.",
+        ])
+        c.fonte([("Segmentos por trimestre", "Planilha B3 · IS (New Seg)", "Linhas 4, 6, 7, 8, 14 e 18; colunas 1T20–2T26")])
 
-    # ---------------------------------------------------------------- 4. Do faturamento ao resultado
-    c.cabecalho_secao("Do faturamento ao resultado", "Quanto sobra da receita, e a que custo")
-    g1, g2 = st.columns(2)
-    r = a.loc[fim]
-    with g1:
-        outros = r["lair"] - r["resultado_operacional"]
-        passos = [
-            dict(rotulo="Receita bruta", valor=r["receita_total"], tipo="total", cor=c.AZUL,
-                 hover=f"<b>Receita bruta</b><br>{c.bi(r['receita_total'], md=False)}" + c.dica("Receita bruta")),
-            dict(rotulo="Deduções", valor=r["deducoes"], tipo="passo", cor=c.cor_oport("Médio"),
-                 hover=f"<b>Deduções</b><br>{pct(-r['deducoes'] / r['receita_total'], 1)} da bruta<br>Oportunidade: Médio"
-                       + c.dica("Deduções da receita")),
-            dict(rotulo="Despesas operacionais", valor=r["despesas"], tipo="passo", cor=c.cor_oport("Médio"),
-                 hover=f"<b>Despesas (com D&A)</b><br>{pct(-r['despesas'] / r['receita_total'], 1)} da bruta"
-                       "<br>Oportunidade: Médio (detalhe na aba de Eficiência)" + c.dica("Despesas operacionais")),
-            dict(rotulo="Resultado financeiro e outros", valor=outros, tipo="passo",
-                 cor=c.cor_oport("Forte" if outros >= 0 else "Médio"),
-                 hover=f"<b>Resultado financeiro e outros</b><br>{c.bi(outros, md=False)}" + c.dica("Resultado financeiro")),
-            dict(rotulo="IR e CS", valor=r["ir"], tipo="passo", cor=c.cor_oport("Médio"),
-                 hover=f"<b>IR e CS</b><br>{pct(-r['ir'] / r['receita_total'], 1)} da bruta<br>Oportunidade: Médio"
-                       + c.dica("Imposto de renda e contribuição social")),
-            dict(rotulo="Lucro líquido", valor=r["lucro"], tipo="total", cor=c.AZUL,
-                 hover=f"<b>Lucro líquido</b><br>{c.bi(r['lucro'], md=False)} · {pct(r['lucro'] / r['receita_total'], 1)}"
-                       " da receita bruta"),
-        ]
-        c.mostrar_grafico(c.cascata(passos, f"Da receita bruta ao lucro líquido ({fim})"), key="enz_cascata")
-        c.leitura(f"Em {fim}, da receita bruta: {pct(-r['deducoes'] / r['receita_total'], 1)} vão para deduções, "
-                  f"{pct(-r['despesas'] / r['receita_total'], 1)} para despesas e {pct(-r['ir'] / r['receita_total'], 1)} "
-                  f"para IR/CS. O lucro fica com <b>{pct(r['lucro'] / r['receita_total'], 1)}</b>.")
-    with g2:
-        ml = a["lucro"] / rl
-        fig = go.Figure()
-        fig.add_bar(x=x, y=rl / 1e6, name="Receita líquida (R$ bi)", marker_color="#c9d6e8",
-                    texttemplate="%{y:.2f}", textposition="inside", insidetextanchor="start",
-                    hovertext=[f"<b>{y}</b><br>Receita líquida: R$ {br(v / 1e6, 2)} bi" + c.dica("Receita líquida")
-                               for y, v in rl.items()], hoverinfo="text")
-        for serie, nome, cor, dash, termo in ((marg, "Margem EBITDA", "#4c78a8", None, "Margem EBITDA"),
-                                              (ml, "Margem líquida", "#e45756", "dash", "Margem líquida")):
-            dif = serie - serie.shift(1)
-            niv = [("Alto" if v < -0.01 else "Médio" if v < 0 else "Forte") if pd.notna(v) else "Baixo" for v in dif]
-            fig.add_scatter(x=x, y=serie * 100, name=nome, yaxis="y2", mode="lines+markers+text",
-                            texttemplate="%{y:.1f}%", textposition="top center",
-                            line=dict(color=cor, width=3, dash=dash),
-                            marker=dict(size=11, color=[c.cor_oport(v) for v in niv], line=dict(color=cor, width=2)),
-                            hovertext=[f"<b>{nome} · {y}</b><br>{pct(v, 1)}"
-                                       + (f" ({c.pp(dd)})" if pd.notna(dd) else "") + f"<br>Oportunidade: {nv}"
-                                       + c.dica(termo) for y, v, dd, nv in zip(serie.index, serie, dif, niv)],
-                            hoverinfo="text")
-        c.layout_base(fig, "Receita líquida vs. margens (marcador = variação)", y_titulo="R$ bilhões")
-        lo = max(0, min(ml.min(), marg.min()) * 100 - 12)
-        hi = min(100, max(ml.max(), marg.max()) * 100 + 8)
-        fig.update_layout(yaxis2=dict(title=dict(text="% da receita líquida"), overlaying="y", side="right",
-                                      showgrid=False, ticksuffix="%", range=[lo, hi]))
-        fig.update_layout(yaxis=dict(range=[0, rl.max() / 1e6 * 1.15]))
-        fig.update_xaxes(type="category")
-        c.mostrar_grafico(fig, key="enz_margens")
-        peso = dados_tec / rb
-        c.leitura(f"Margem EBITDA: {pct(marg[ini], 1)} ({ini}) → <b>{pct(marg[fim], 1)}</b> ({fim}); "
-                  f"Dados/Tecnologia: {pct(peso[ini], 1)} → {pct(peso[fim], 1)} da receita bruta."
-                  + (" Uma leitura possível: a diversificação trouxe receitas de margem menor, ainda em patamar elevado."
-                     if marg[fim] < marg[ini] and peso[fim] > peso[ini] else ""))
-    c.legenda_oportunidade()
-    c.diagnostico([
-        "Mesmo com a receita crescendo, a margem EBITDA caiu: as novas linhas (dados, tecnologia) têm custo maior.",
-        "O resultado financeiro ficou positivo nos últimos anos e ajudou o lucro.",
-    ])
-    c.fonte([("Despesas, resultado operacional, LAIR, IR, lucro", "Planilha B3 · IS (New Seg)",
-              "Linhas 26, 39, 50, 51 e 56"), ("EBITDA", "Planilha B3 · IS (New Seg)", "Linha 66")],
-            nota="Mudança em relação ao Streamlit original: os dados vêm da planilha oficial 2T26 (B3 RI), lidos pelo "
-                 "rótulo da linha, em vez de um caminho local com colunas fixas.")
+        # ---------------------------------------------------------------- 4. Do faturamento ao resultado
+        c.cabecalho_secao("Do faturamento ao resultado", "Quanto sobra da receita, e a que custo")
+        g1, g2 = st.columns(2)
+        r = a.loc[fim]
+        with g1:
+            outros = r["lair"] - r["resultado_operacional"]
+            passos = [
+                dict(rotulo="Receita bruta", valor=r["receita_total"], tipo="total", cor=c.AZUL,
+                     hover=f"<b>Receita bruta</b><br>{c.bi(r['receita_total'], md=False)}" + c.dica("Receita bruta")),
+                dict(rotulo="Deduções", valor=r["deducoes"], tipo="passo", cor=c.cor_oport("Médio"),
+                     hover=f"<b>Deduções</b><br>{pct(-r['deducoes'] / r['receita_total'], 1)} da bruta<br>Oportunidade: Médio"
+                           + c.dica("Deduções da receita")),
+                dict(rotulo="Despesas operacionais", valor=r["despesas"], tipo="passo", cor=c.cor_oport("Médio"),
+                     hover=f"<b>Despesas (com D&A)</b><br>{pct(-r['despesas'] / r['receita_total'], 1)} da bruta"
+                           "<br>Oportunidade: Médio (detalhe na aba de Eficiência)" + c.dica("Despesas operacionais")),
+                dict(rotulo="Resultado financeiro e outros", valor=outros, tipo="passo",
+                     cor=c.cor_oport("Forte" if outros >= 0 else "Médio"),
+                     hover=f"<b>Resultado financeiro e outros</b><br>{c.bi(outros, md=False)}" + c.dica("Resultado financeiro")),
+                dict(rotulo="IR e CS", valor=r["ir"], tipo="passo", cor=c.cor_oport("Médio"),
+                     hover=f"<b>IR e CS</b><br>{pct(-r['ir'] / r['receita_total'], 1)} da bruta<br>Oportunidade: Médio"
+                           + c.dica("Imposto de renda e contribuição social")),
+                dict(rotulo="Lucro líquido", valor=r["lucro"], tipo="total", cor=c.AZUL,
+                     hover=f"<b>Lucro líquido</b><br>{c.bi(r['lucro'], md=False)} · {pct(r['lucro'] / r['receita_total'], 1)}"
+                           " da receita bruta"),
+            ]
+            c.mostrar_grafico(c.cascata(passos, f"Da receita bruta ao lucro líquido ({fim})"), key="enz_cascata")
+            c.leitura(f"Em {fim}, da receita bruta: {pct(-r['deducoes'] / r['receita_total'], 1)} vão para deduções, "
+                      f"{pct(-r['despesas'] / r['receita_total'], 1)} para despesas e {pct(-r['ir'] / r['receita_total'], 1)} "
+                      f"para IR/CS. O lucro fica com <b>{pct(r['lucro'] / r['receita_total'], 1)}</b>.")
+        with g2:
+            ml = a["lucro"] / rl
+            fig = go.Figure()
+            fig.add_bar(x=x, y=rl / 1e6, name="Receita líquida (R$ bi)", marker_color="#c9d6e8",
+                        texttemplate="%{y:.2f}", textposition="inside", insidetextanchor="start",
+                        hovertext=[f"<b>{y}</b><br>Receita líquida: R$ {br(v / 1e6, 2)} bi" + c.dica("Receita líquida")
+                                   for y, v in rl.items()], hoverinfo="text")
+            for serie, nome, cor, dash, termo in ((marg, "Margem EBITDA", "#4c78a8", None, "Margem EBITDA"),
+                                                  (ml, "Margem líquida", "#e45756", "dash", "Margem líquida")):
+                dif = serie - serie.shift(1)
+                niv = [("Alto" if v < -0.01 else "Médio" if v < 0 else "Forte") if pd.notna(v) else "Baixo" for v in dif]
+                fig.add_scatter(x=x, y=serie * 100, name=nome, yaxis="y2", mode="lines+markers+text",
+                                texttemplate="%{y:.1f}%", textposition="top center",
+                                line=dict(color=cor, width=3, dash=dash),
+                                marker=dict(size=11, color=[c.cor_oport(v) for v in niv], line=dict(color=cor, width=2)),
+                                hovertext=[f"<b>{nome} · {y}</b><br>{pct(v, 1)}"
+                                           + (f" ({c.pp(dd)})" if pd.notna(dd) else "") + f"<br>Oportunidade: {nv}"
+                                           + c.dica(termo) for y, v, dd, nv in zip(serie.index, serie, dif, niv)],
+                                hoverinfo="text")
+            c.layout_base(fig, "Receita líquida vs. margens (marcador = variação)", y_titulo="R$ bilhões")
+            lo = max(0, min(ml.min(), marg.min()) * 100 - 12)
+            hi = min(100, max(ml.max(), marg.max()) * 100 + 8)
+            fig.update_layout(yaxis2=dict(title=dict(text="% da receita líquida"), overlaying="y", side="right",
+                                          showgrid=False, ticksuffix="%", range=[lo, hi]))
+            fig.update_layout(yaxis=dict(range=[0, rl.max() / 1e6 * 1.15]))
+            fig.update_xaxes(type="category")
+            c.mostrar_grafico(fig, key="enz_margens")
+            peso = dados_tec / rb
+            c.leitura(f"Margem EBITDA: {pct(marg[ini], 1)} ({ini}) → <b>{pct(marg[fim], 1)}</b> ({fim}); "
+                      f"Dados/Tecnologia: {pct(peso[ini], 1)} → {pct(peso[fim], 1)} da receita bruta."
+                      + (" Uma leitura possível: a diversificação trouxe receitas de margem menor, ainda em patamar elevado."
+                         if marg[fim] < marg[ini] and peso[fim] > peso[ini] else ""))
+        c.legenda_oportunidade()
+        c.diagnostico([
+            "Mesmo com a receita crescendo, a margem EBITDA caiu: as novas linhas (dados, tecnologia) têm custo maior.",
+            "O resultado financeiro ficou positivo nos últimos anos e ajudou o lucro.",
+        ])
+        c.fonte([("Despesas, resultado operacional, LAIR, IR, lucro", "Planilha B3 · IS (New Seg)",
+                  "Linhas 26, 39, 50, 51 e 56"), ("EBITDA", "Planilha B3 · IS (New Seg)", "Linha 66")],
+                nota="Mudança em relação ao Streamlit original: os dados vêm da planilha oficial 2T26 (B3 RI), lidos pelo "
+                     "rótulo da linha, em vez de um caminho local com colunas fixas.")
 
     with st.expander("Ver tabela de segmentos usada no gráfico"):
         tab = pd.DataFrame({nome: a[k] for k, nome in dre.SEGMENTOS}).T

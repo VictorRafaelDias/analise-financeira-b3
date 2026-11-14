@@ -115,7 +115,10 @@ def render(janela):
 
     # ---------------------------------------------------------------- Estrutura do painel
     st.markdown("### 🧭 Como o painel está organizado")
-    for emoji, tema, quem, pergunta in ABAS:
+    ordem = [3, 1, 2, 0, 4] if janela.simples else range(len(ABAS))  # simplificado: Solidez primeiro
+    for emoji, tema, quem, pergunta in (ABAS[i] for i in ordem):
+        if janela.simples and tema.startswith("Desenvolvimento"):
+            pergunta = "Como evoluíram investidores, custódia e o crédito imobiliário e do agro?"
         st.markdown(c.md(f"{emoji} **{tema}** — _{pergunta}_"))
 
     # ---------------------------------------------------------------- Ferramentas e fontes

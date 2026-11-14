@@ -33,6 +33,7 @@ class Janela:
     """Janela global escolhida na barra lateral."""
     ano_ini: int
     ano_fim: int
+    simples: bool = False  # versão simplificada do painel (menos seções por aba)
     oportunidades: list = field(default_factory=list)  # preenchida pelas abas, lida na Conclusão
 
     @property

@@ -63,10 +63,16 @@ def _fig_serie(df, col, nome, termo, tipo, unidade_txt, fmt):
 
 def render(janela):
     st.markdown("## 📊 Desenvolvimento de Mercado, Impacto Econômico & ODS")
-    st.caption("Como a base de investidores, a custódia e as emissões de dívida evoluíram, e o "
-               "que isso diz sobre o financiamento das empresas e os ODS.")
-    st.info("Investidores e custódia são **posições no fim de cada ano** (saldos). Emissões são o **volume emitido "
-            "ao longo do ano** (fluxo). Por isso, são indicadores diferentes e não se somam.")
+    if janela.simples:
+        st.caption("Como a base de investidores, a custódia e o crédito imobiliário e do agro evoluíram, e o que "
+                   "isso diz sobre o financiamento da economia e os ODS.")
+        st.info("Investidores e custódia são **posições no fim de cada ano** (saldos): mostram o tamanho da base em "
+                "cada data e não se somam entre anos.")
+    else:
+        st.caption("Como a base de investidores, a custódia e as emissões de dívida evoluíram, e o "
+                   "que isso diz sobre o financiamento das empresas e os ODS.")
+        st.info("Investidores e custódia são **posições no fim de cada ano** (saldos). Emissões são o **volume emitido "
+                "ao longo do ano** (fluxo). Por isso, são indicadores diferentes e não se somam.")
     c.glossario("camila")
     c.aviso_parcial(janela)
 
@@ -89,15 +95,17 @@ def render(janela):
              delta=None if n == 0 else c.delta_txt(v_inv, int(ini["ano"])), termo="Investidores em renda variável"),
         dict(rotulo=f"Custódia em {int(fim['ano'])}", valor=f"R$ {br(fim['custodia'], 1)} bi",
              delta=None if n == 0 else c.delta_txt(v_cus, int(ini["ano"])), termo="Valor em custódia"),
-        dict(rotulo=f"Emissões em {int(fim['ano'])}",
-             valor="—" if pd.isna(fim["emissoes"]) else f"R$ {br(fim['emissoes'], 1)} bi",
-             delta=c.delta_txt(v_emi, int(ant["ano"])) if ant is not None else None,
-             termo="Emissões de dívida corporativa"),
+        *([] if janela.simples else [dict(
+            rotulo=f"Emissões em {int(fim['ano'])}",
+            valor="—" if pd.isna(fim["emissoes"]) else f"R$ {br(fim['emissoes'], 1)} bi",
+            delta=c.delta_txt(v_emi, int(ant["ano"])) if ant is not None else None,
+            termo="Emissões de dívida corporativa")]),
         dict(rotulo="Custódia por investidor", valor=f"R$ {br(cust_inv.iloc[-1], 0)} mil",
              delta=None if n == 0 else c.delta_txt(c.var(cust_inv.iloc[-1], cust_inv.iloc[0]), int(ini["ano"])),
              termo="Custódia por investidor"),
     ])
-    st.caption("Fonte: B3 — pessoas físicas em renda variável e emissões públicas de dívida corporativa. "
+    st.caption("Fonte: B3 — pessoas físicas em renda variável" if janela.simples else
+               "Fonte: B3 — pessoas físicas em renda variável e emissões públicas de dívida corporativa. "
                "Deltas contra o primeiro ano da janela (emissões: contra o ano anterior).")
 
     # ---------------------------------------------------------------- Painel de alertas
@@ -117,11 +125,12 @@ def render(janela):
              status=c.status_faixa(yoy_cus, 0.05, 0.0),
              desc="Variação do valor guardado na B3 por pessoas físicas (preço dos ativos + novas aplicações).",
              regra="≥ 5% Confortável · 0–5% Atenção · < 0 Alerta"),
-        dict(nome="Emissões de dívida no ano", valor=pct(v_emi, 1, sinal=True),
-             delta=f"R$ {br(fim['emissoes'], 1)} bi em {int(fim['ano'])}" if pd.notna(fim["emissoes"]) else "",
-             status=c.status_faixa(v_emi, 0.10, 0.0),
-             desc="Ritmo de captação das empresas via mercado de capitais (canal de financiamento, ODS 8 e 9).",
-             regra="≥ 10% Confortável · 0–10% Atenção · < 0 Alerta"),
+        *([] if janela.simples else [dict(
+            nome="Emissões de dívida no ano", valor=pct(v_emi, 1, sinal=True),
+            delta=f"R$ {br(fim['emissoes'], 1)} bi em {int(fim['ano'])}" if pd.notna(fim["emissoes"]) else "",
+            status=c.status_faixa(v_emi, 0.10, 0.0),
+            desc="Ritmo de captação das empresas via mercado de capitais (canal de financiamento, ODS 8 e 9).",
+            regra="≥ 10% Confortável · 0–10% Atenção · < 0 Alerta")]),
         dict(nome="Investidores: crescimento médio", valor=pct(cagr_inv, 1, sinal=True) + " a.a.",
              delta=f"CAGR {int(ini['ano'])}–{int(fim['ano'])}", status="Informativo",
              desc="Crescimento médio composto da base de investidores na janela.", regra="informativo"),
@@ -133,7 +142,8 @@ def render(janela):
              desc="Tamanho médio da carteira por CPF. Cai quando entram muitos investidores pequenos.",
              regra="informativo"),
     ]
-    c.painel_alertas(alertas, leitura=c.leitura_alertas(alertas[:3], f"em {int(fim['ano'])}"),
+    n_regra = 2 if janela.simples else 3  # alertas com regra (os demais são informativos)
+    c.painel_alertas(alertas, leitura=c.leitura_alertas(alertas[:n_regra], f"em {int(fim['ano'])}"),
                      rodape="Regras definidas pelo grupo para leitura rápida; não são metas oficiais da B3.", por_linha=3)
     c.legenda_oportunidade(("Alto", "Médio", "Forte"))
     st.caption("Nos gráficos desta aba, cada ponto é colorido pela variação contra o ano anterior: "
@@ -187,69 +197,70 @@ def render(janela):
               "Posição no encerramento de cada ano, R$ bilhões")],
             nota="Valores digitados a partir da publicação da B3.")
 
-    # ---------------------------------------------------------------- 3. Emissões
-    c.cabecalho_secao("🏢 Emissões de dívida corporativa",
-                      "O mercado de capitais virou canal relevante de financiamento das empresas",
-                      "As empresas emitem títulos de dívida para captar recursos. O indicador mostra o volume anual "
-                      "de emissões públicas divulgado pela B3.")
-    if df["emissoes"].notna().any():
-        fig, d = _fig_serie(df, "emissoes", "Emissões", "Emissões de dívida corporativa", "barra", "R$ bilhões",
-                            lambda v: f"R$ {br(v, 1)} bi")
-        c.mostrar_grafico(fig, key="cam_emi")
-        if len(d) > 1:
-            ritmo = (f"; o crescimento desacelerou de {pct(d['yoy'].iloc[1], 0, sinal=True)} para "
-                     f"{pct(d['yoy'].iloc[-1], 1, sinal=True)}" if len(d) > 2
-                     else f" ({pct(d['yoy'].iloc[-1], 1, sinal=True)})")
-            c.leitura(f"As emissões foram de <b>R$ {br(d['emissoes'].iloc[0], 1)} bi</b> ({int(d['ano'].iloc[0])}) para "
-                      f"<b>R$ {br(d['emissoes'].iloc[-1], 1)} bi</b> ({int(d['ano'].iloc[-1])}){ritmo}.")
-    else:
-        st.info("A série de emissões começa em 2023. Amplie a janela para vê-la.")
-    c.diagnostico([
-        "Recorde em 2025 (R$ 647,5 bi), mas o crescimento caiu de +76% (2024) para +6,5% (2025).",
-        "A série só vai de 2023 a 2025: 2020–2022 ficaram fora para não misturar definições diferentes.",
-    ])
-    c.fonte([("Emissões públicas de dívida corporativa", "B3 — boletim de emissões", "Volume anual, R$ bilhões")],
-            nota="Valores digitados a partir da publicação da B3.")
+    if not janela.simples:  # versão simplificada: sem emissões e composição por instrumento
+        # ---------------------------------------------------------------- 3. Emissões
+        c.cabecalho_secao("🏢 Emissões de dívida corporativa",
+                          "O mercado de capitais virou canal relevante de financiamento das empresas",
+                          "As empresas emitem títulos de dívida para captar recursos. O indicador mostra o volume anual "
+                          "de emissões públicas divulgado pela B3.")
+        if df["emissoes"].notna().any():
+            fig, d = _fig_serie(df, "emissoes", "Emissões", "Emissões de dívida corporativa", "barra", "R$ bilhões",
+                                lambda v: f"R$ {br(v, 1)} bi")
+            c.mostrar_grafico(fig, key="cam_emi")
+            if len(d) > 1:
+                ritmo = (f"; o crescimento desacelerou de {pct(d['yoy'].iloc[1], 0, sinal=True)} para "
+                         f"{pct(d['yoy'].iloc[-1], 1, sinal=True)}" if len(d) > 2
+                         else f" ({pct(d['yoy'].iloc[-1], 1, sinal=True)})")
+                c.leitura(f"As emissões foram de <b>R$ {br(d['emissoes'].iloc[0], 1)} bi</b> ({int(d['ano'].iloc[0])}) para "
+                          f"<b>R$ {br(d['emissoes'].iloc[-1], 1)} bi</b> ({int(d['ano'].iloc[-1])}){ritmo}.")
+        else:
+            st.info("A série de emissões começa em 2023. Amplie a janela para vê-la.")
+        c.diagnostico([
+            "Recorde em 2025 (R$ 647,5 bi), mas o crescimento caiu de +76% (2024) para +6,5% (2025).",
+            "A série só vai de 2023 a 2025: 2020–2022 ficaram fora para não misturar definições diferentes.",
+        ])
+        c.fonte([("Emissões públicas de dívida corporativa", "B3 — boletim de emissões", "Volume anual, R$ bilhões")],
+                nota="Valores digitados a partir da publicação da B3.")
 
-    # ---------------------------------------------------------------- 4. Composição
-    c.cabecalho_secao("📑 Composição por instrumento financeiro",
-                      "Debêntures dominam; CRI recuou em 2025",
-                      "Principais instrumentos das emissões públicas de dívida corporativa em 2024 e 2025.")
-    comp = COMPOSICAO.pivot(index="instrumento", columns="ano", values="valor").reindex(
-        ["Debêntures", "CRI", "CRA", "Notas comerciais"])
-    comp["var"] = comp[2025] / comp[2024] - 1
-    niveis = [c.nivel_por_variacao(v) for v in comp["var"]]
-    fig = go.Figure()
-    fig.add_bar(x=comp.index, y=comp[2024], name="2024", marker_color=c.CINZA_CLARO,
-                text=[f"R$ {br(v, 1)}" for v in comp[2024]], textposition="outside",
-                hovertext=[f"<b>{i} · 2024</b><br>R$ {br(v, 1)} bi" + c.dica(TERMO_INSTR[i]) for i, v in comp[2024].items()],
-                hoverinfo="text")
-    fig.add_bar(x=comp.index, y=comp[2025], name="2025 (cor = oportunidade)", marker_color=[c.cor_oport(n) for n in niveis],
-                text=[f"R$ {br(v, 1)}" for v in comp[2025]], textposition="outside",
-                hovertext=[f"<b>{i} · 2025</b><br>R$ {br(v, 1)} bi · {pct(vr, 1, sinal=True)} vs 2024"
-                           f"<br>Oportunidade: {n}" + c.dica(TERMO_INSTR[i])
-                           for (i, v), vr, n in zip(comp[2025].items(), comp["var"], niveis)],
-                hoverinfo="text")
-    fig.update_layout(barmode="group")
-    c.layout_base(fig, altura=460, y_titulo="R$ bilhões")
-    fig.update_yaxes(range=[0, comp[[2024, 2025]].max().max() * 1.15])
-    c.mostrar_grafico(fig, key="cam_comp")
-    soma24, soma25 = comp[2024].sum(), comp[2025].sum()
-    c.leitura(f"Debêntures são {pct(comp.loc['Debêntures', 2025] / soma25, 0)} dos quatro instrumentos em 2025. "
-              f"CRI caiu {pct(-comp.loc['CRI', 'var'], 1)}; notas comerciais cresceram "
-              f"{pct(comp.loc['Notas comerciais', 'var'], 1)}.")
-    c.diagnostico([
-        "Debêntures concentram a captação (R$ 496,3 bi em 2025, +6,5%).",
-        "CRI recuou de R$ 57,5 bi para R$ 50,8 bi (−11,7%): oportunidade no financiamento imobiliário.",
-        "Notas comerciais (+22,7%) e CRA (+12,7%) ganham espaço como alternativas.",
-        f"**Destaque de coerência (sem corrigir dados):** em 2024, os quatro instrumentos somam "
-        f"R$ {br(soma24, 1)} bi, contra R$ 608,1 bi de total no gráfico de emissões (diferença de "
-        f"R$ {br(608.1 - soma24, 1)} bi). Em 2025 a soma (R$ {br(soma25, 1)} bi) bate com o total "
-        "(R$ 647,5 bi). Vale conferir a série de 2024 na publicação da B3.",
-    ])
-    c.fonte([("Emissões por instrumento", "B3 — boletim de emissões", "2024 e 2025, R$ bilhões")],
-            nota="Os valores por categoria podem não totalizar o total anual por "
-                 "arredondamentos ou diferenças de apresentação.")
+        # ---------------------------------------------------------------- 4. Composição
+        c.cabecalho_secao("📑 Composição por instrumento financeiro",
+                          "Debêntures dominam; CRI recuou em 2025",
+                          "Principais instrumentos das emissões públicas de dívida corporativa em 2024 e 2025.")
+        comp = COMPOSICAO.pivot(index="instrumento", columns="ano", values="valor").reindex(
+            ["Debêntures", "CRI", "CRA", "Notas comerciais"])
+        comp["var"] = comp[2025] / comp[2024] - 1
+        niveis = [c.nivel_por_variacao(v) for v in comp["var"]]
+        fig = go.Figure()
+        fig.add_bar(x=comp.index, y=comp[2024], name="2024", marker_color=c.CINZA_CLARO,
+                    text=[f"R$ {br(v, 1)}" for v in comp[2024]], textposition="outside",
+                    hovertext=[f"<b>{i} · 2024</b><br>R$ {br(v, 1)} bi" + c.dica(TERMO_INSTR[i]) for i, v in comp[2024].items()],
+                    hoverinfo="text")
+        fig.add_bar(x=comp.index, y=comp[2025], name="2025 (cor = oportunidade)", marker_color=[c.cor_oport(n) for n in niveis],
+                    text=[f"R$ {br(v, 1)}" for v in comp[2025]], textposition="outside",
+                    hovertext=[f"<b>{i} · 2025</b><br>R$ {br(v, 1)} bi · {pct(vr, 1, sinal=True)} vs 2024"
+                               f"<br>Oportunidade: {n}" + c.dica(TERMO_INSTR[i])
+                               for (i, v), vr, n in zip(comp[2025].items(), comp["var"], niveis)],
+                    hoverinfo="text")
+        fig.update_layout(barmode="group")
+        c.layout_base(fig, altura=460, y_titulo="R$ bilhões")
+        fig.update_yaxes(range=[0, comp[[2024, 2025]].max().max() * 1.15])
+        c.mostrar_grafico(fig, key="cam_comp")
+        soma24, soma25 = comp[2024].sum(), comp[2025].sum()
+        c.leitura(f"Debêntures são {pct(comp.loc['Debêntures', 2025] / soma25, 0)} dos quatro instrumentos em 2025. "
+                  f"CRI caiu {pct(-comp.loc['CRI', 'var'], 1)}; notas comerciais cresceram "
+                  f"{pct(comp.loc['Notas comerciais', 'var'], 1)}.")
+        c.diagnostico([
+            "Debêntures concentram a captação (R$ 496,3 bi em 2025, +6,5%).",
+            "CRI recuou de R$ 57,5 bi para R$ 50,8 bi (−11,7%): oportunidade no financiamento imobiliário.",
+            "Notas comerciais (+22,7%) e CRA (+12,7%) ganham espaço como alternativas.",
+            f"**Destaque de coerência (sem corrigir dados):** em 2024, os quatro instrumentos somam "
+            f"R$ {br(soma24, 1)} bi, contra R$ 608,1 bi de total no gráfico de emissões (diferença de "
+            f"R$ {br(608.1 - soma24, 1)} bi). Em 2025 a soma (R$ {br(soma25, 1)} bi) bate com o total "
+            "(R$ 647,5 bi). Vale conferir a série de 2024 na publicação da B3.",
+        ])
+        c.fonte([("Emissões por instrumento", "B3 — boletim de emissões", "2024 e 2025, R$ bilhões")],
+                nota="Os valores por categoria podem não totalizar o total anual por "
+                     "arredondamentos ou diferenças de apresentação.")
 
     # ---------------------------------------------------------------- IPOs, crédito imobiliário/agro e bancos
     camila_mercado.render(janela, ABA, df[["ano", "emissoes"]])
@@ -269,14 +280,14 @@ def render(janela):
     with o1:
         st.markdown("#### 📈 ODS 8")
         st.markdown("**Trabalho decente e crescimento econômico.** O mercado de capitais oferece às empresas "
-                    "alternativas para captar recursos e financiar suas atividades; as emissões medem a força "
-                    "desse canal.")
+                    "alternativas para captar recursos e financiar suas atividades"
+                    + ("." if janela.simples else "; as emissões medem a força desse canal."))
     with o2:
         st.markdown("#### 🏗️ ODS 9")
         st.markdown("**Indústria, inovação e infraestrutura.** Os recursos captados podem financiar projetos, "
                     "infraestrutura e inovação. Para comprovar resultados, é preciso dado sobre o destino dos "
                     "recursos.")
-    c.diagnostico([
+    diag_ods = [
         "**ODS 8:** sem IPOs desde 2021, o financiamento das empresas passou a vir de dívida (debêntures, notas "
         "comerciais) e de títulos bancários; a retomada de IPOs ampliaria o capital de longo prazo para crescer e "
         "gerar emprego.",
@@ -286,24 +297,33 @@ def render(janela):
         "das famílias vira crédito; seus resultados acompanham juros e inadimplência do país.",
         "As emissões recordes reforçam o papel da B3 no financiamento das empresas (ODS 8).",
         "Falta dado de destinação dos recursos para medir o impacto em infraestrutura e inovação (ODS 9).",
-    ], titulo="🔍 Diagnóstico ODS")
+    ]
+    if janela.simples:  # só o que as seções da versão simplificada mostram
+        diag_ods = [
+            "**ODS 8:** mais pessoas físicas investindo (base de investidores e custódia) ampliam a poupança que "
+            "financia as empresas pelo mercado de capitais.",
+            diag_ods[1],
+            diag_ods[4],
+        ]
+    c.diagnostico(diag_ods, titulo="🔍 Diagnóstico ODS")
 
     # ---------------------------------------------------------------- Oportunidades
-    a_cri = comp.loc["CRI", "var"]
+    a_cri = None if janela.simples else comp.loc["CRI", "var"]
     c.oportunidade(janela, ABA, "Alto" if yoy_inv is not None and yoy_inv < 0.05 else "Médio",
                    "Base de investidores estagnada",
                    f"A base cresceu {pct(yoy_inv, 1, sinal=True)} no último ano e cerca de 3% ao ano desde 2022, "
                    "depois do salto de 2020–2021.",
                    "Ampliar educação financeira e produtos de entrada para trazer novos CPFs à renda variável.",
                    f"{br(fim['investidores'], 1)} mi de investidores")
-    c.oportunidade(janela, ABA, "Alto" if a_cri < 0 else "Médio", "Queda das emissões de CRI",
-                   f"CRI recuou {pct(-a_cri, 1)} em 2025, enquanto debêntures e notas comerciais cresceram.",
-                   "Estimular o financiamento imobiliário via mercado de capitais (produtos e liquidez de CRI).",
-                   "R$ 50,8 bi em 2025")
-    c.oportunidade(janela, ABA, "Médio", "Desaceleração das emissões",
-                   "As emissões bateram recorde, mas cresceram só 6,5% em 2025 contra 76% em 2024.",
-                   "Diversificar emissores (médias empresas, notas comerciais) para manter o ritmo de captação.",
-                   "R$ 647,5 bi em 2025")
+    if not janela.simples:  # seções de emissões só existem no completo
+        c.oportunidade(janela, ABA, "Alto" if a_cri < 0 else "Médio", "Queda das emissões de CRI",
+                       f"CRI recuou {pct(-a_cri, 1)} em 2025, enquanto debêntures e notas comerciais cresceram.",
+                       "Estimular o financiamento imobiliário via mercado de capitais (produtos e liquidez de CRI).",
+                       "R$ 50,8 bi em 2025")
+        c.oportunidade(janela, ABA, "Médio", "Desaceleração das emissões",
+                       "As emissões bateram recorde, mas cresceram só 6,5% em 2025 contra 76% em 2024.",
+                       "Diversificar emissores (médias empresas, notas comerciais) para manter o ritmo de captação.",
+                       "R$ 647,5 bi em 2025")
     c.oportunidade(janela, ABA, "Médio", "Medição de impacto nos ODS",
                    "Não há dado de destinação dos recursos captados para comprovar efeito em infraestrutura e inovação.",
                    "Divulgar a destinação das emissões (ex.: títulos verdes, infraestrutura) para medir o ODS 9.")
